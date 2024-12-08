@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Virtual Python Lab",
+    "slug": "virtual-python-lab",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1b2838"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1b2838"
+      },
+      "package": "com.virtualpythonlab.app",
+      "versionCode": 1,
+      "permissions": []
+    },
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "newArchEnabled": true
+    },
+    "scheme": "virtualpythonlab"
+  }
+}
