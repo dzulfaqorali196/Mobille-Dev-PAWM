@@ -71,7 +71,7 @@ export default function CustomSplashScreen() {
         }}
       >
         <Image 
-          source={require('@/assets/icon.png')}
+          source={require('@/assets/splash.png')}
           style={styles.logo}
           resizeMode="contain"
         />
