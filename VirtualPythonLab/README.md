@@ -1,50 +1,133 @@
-# Welcome to your Expo app 👋
+# Virton - Python Learning App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Persyaratan Sistem
 
-## Get started
+- Node.js (versi 16 atau lebih baru)
+- npm atau yarn
+- Android Studio & Android SDK
+- Expo CLI
+- EAS CLI
+- Git
 
-1. Install dependencies
+## Langkah Instalasi
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+1. **Clone Repository**
 ```bash
-npm run reset-project
+git clone https://github.com/username/virton.git
+cd virton
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. **Install Dependencies**
+```bash
+npm install
+```
 
-## Learn more
+3. **Install Expo CLI & EAS CLI**
+```bash
+npm install -g expo-cli
+npm install -g eas-cli
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+4. **Setup Android Studio**
+- Install Android Studio
+- Install Android SDK (minimum API level 21)
+- Buat Android Virtual Device (AVD)
+- Set ANDROID_HOME environment variable
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Menjalankan Aplikasi (Development)
 
-## Join the community
+1. **Development Mode**
+```bash
+npx expo start
+```
 
-Join our community of developers creating universal apps.
+2. **Opsi Menjalankan:**
+- Tekan `a` - untuk membuka di Android Emulator
+- Tekan `i` - untuk membuka di iOS Simulator (macOS only)
+- Scan QR Code dengan Expo Go untuk perangkat fisik
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Build APK
+
+1. **Login ke Expo**
+```bash
+eas login
+```
+
+2. **Konfigurasi EAS Build**
+- Pastikan file `eas.json` sudah ada dengan konfigurasi:
+```json
+{
+  "cli": {
+    "version": ">= 5.9.1"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
+```
+
+3. **Build APK Preview**
+```bash
+eas build -p android --profile preview
+```
+
+4. **Build APK Production**
+```bash
+eas build -p android --profile production
+```
+
+## Troubleshooting
+
+1. **Jika terjadi error saat build:**
+```bash
+expo start --clear
+```
+
+2. **Untuk reset cache:**
+```bash
+npm start -- --reset-cache
+```
+
+3. **Jika ada masalah dengan dependencies:**
+```bash
+rd /s /q node_modules
+npm install
+```
+
+## Struktur Project
+
+```
+virton/
+├── app/                # Router dan screens
+│   ├── (tabs)/        # Tab screens
+│   ├── screens/       # Other screens
+│   └── _layout.tsx    # Root layout
+├── assets/            # Gambar, fonts, dll
+├── components/        # Reusable components
+└── hooks/             # Custom hooks
+```
+
+## Fitur Utama
+
+- Interactive Learning Path
+- Live Code Editor
+- Progress Tracking
+- Dark/Light Mode Support
+
+## Catatan Penting
+
+- Pastikan semua environment variables sudah diset dengan benar
+- Untuk development, gunakan Expo Go
+- Untuk testing build APK, gunakan profile "preview"
+- Untuk production release, gunakan profile "production"
+- Backup project sebelum melakukan build atau perubahan besar
+
+## Kontak & Support
+
+- GitHub Issues: [https://github.com/username/virton/issues](https://github.com/username/virton/issues)
+- Email: support@virton.com
+```
