@@ -1,2 +1,2 @@
-import SplashScreen from '@/app/screens/SplashScreen';
-export default SplashScreen;
+import CustomSplashScreen from '@/app/screens/SplashScreen';
+export default CustomSplashScreen;

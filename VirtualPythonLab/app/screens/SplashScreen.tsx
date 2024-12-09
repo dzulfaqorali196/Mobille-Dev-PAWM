@@ -1,107 +1,105 @@
-import React from 'react';
-import { useEffect } from 'react';
-import { StyleSheet, View, Text, Dimensions } from 'react-native';
-import * as ExpoSplashScreen from 'expo-splash-screen';
-import { ThemedView } from '@/components/ThemedView';
-import Animated from 'react-native-reanimated';
-import {
-  useSharedValue,
-  useAnimatedStyle,
+import { useCallback, useEffect } from 'react';
+import { StyleSheet, View, Text, Image, Dimensions } from 'react-native';
+import { MotiView } from 'moti';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
   withSpring,
+  withSequence,
+  withDelay,
   withTiming,
-  Easing,
+  Easing
 } from 'react-native-reanimated';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 
 const { width } = Dimensions.get('window');
-const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
-export default function SplashScreen() {
-  const scale = useSharedValue(0);
+export default function CustomSplashScreen() {
   const opacity = useSharedValue(0);
-  const translateY = useSharedValue(50);
+  const scale = useSharedValue(0.5);
+  const textOpacity = useSharedValue(0);
 
   useEffect(() => {
-    const prepareApp = async () => {
-      try {
-        scale.value = withSpring(1, { damping: 15 });
-        opacity.value = withTiming(1, { duration: 1000 });
-        translateY.value = withTiming(0, { 
-          duration: 1000,
-          easing: Easing.out(Easing.exp)
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (error) {
-        console.warn('An error occurred:', error);
-      } finally {
-        await ExpoSplashScreen.hideAsync();
-      }
-    };
+    opacity.value = withDelay(
+      500,
+      withSequence(
+        withSpring(1, { damping: 15 }),
+      )
+    );
+    
+    scale.value = withDelay(
+      500,
+      withSpring(1, { damping: 15 })
+    );
 
-    prepareApp();
+    textOpacity.value = withDelay(
+      800,
+      withTiming(1, {
+        duration: 1000,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      })
+    );
   }, []);
 
-  const circleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }]
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
   }));
 
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }]
+  const textAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+    transform: [
+      { translateY: withSpring(textOpacity.value * 0, { damping: 15 }) }
+    ],
   }));
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedView style={styles.logoContainer}>
-        <AnimatedView style={[styles.circle, circleStyle]}>
-          <Text style={styles.logoText}>VPL</Text>
-        </AnimatedView>
-      </ThemedView>
-      <AnimatedText style={[styles.title, textStyle]}>
-        Virtual Python Lab
+    <View style={styles.container}>
+      <MotiView
+        from={{
+          opacity: 0,
+          scale: 0.5,
+        }}
+        animate={{
+          opacity: 1,
+          scale: 1,
+        }}
+        transition={{
+          type: 'timing',
+          duration: 1000,
+        }}
+      >
+        <Image 
+          source={require('@/assets/icon.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </MotiView>
+
+      <AnimatedText style={[styles.text, textAnimatedStyle]}>
+        Virton
       </AnimatedText>
-      <AnimatedText style={[styles.subtitle, textStyle]}>
-        Learn • Code • Create
-      </AnimatedText>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1b2838',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2a475e',
   },
-  logoContainer: {
-    alignItems: 'center',
+  logo: {
+    width: width * 0.3,
+    height: width * 0.3,
     marginBottom: 20,
   },
-  circle: {
-    width: width * 0.4,
-    height: width * 0.4,
-    borderRadius: width * 0.2,
-    backgroundColor: '#66c0f4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontSize: 32,
+  text: {
+    fontSize: 42,
     fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 18,
     color: '#66c0f4',
+    marginTop: 20,
   },
-}); 
-
-export default SplashScreen; 
+});

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Virtual Python Lab",
-    "slug": "virtual-python-lab",
+    "name": "Virton",
+    "slug": "virton",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,18 +16,28 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1b2838"
       },
-      "package": "com.virtualpythonlab.app",
+      "package": "com.virton.app",
       "versionCode": 1,
       "permissions": []
     },
     "plugins": [
       "expo-router",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
       "newArchEnabled": true
     },
-    "scheme": "virtualpythonlab"
+    "scheme": "virton",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "22b03b49-dbcd-4246-9b01-7438f5bbdd14"
+      }
+    },
+    "owner": "dzuldev"
   }
 }
