@@ -1,38 +1,46 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import { SplashScreen } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+import { AuthProvider } from '../lib/AuthContext';
+import { ThemeProvider } from '@react-navigation/native';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider 
+        value={{ 
+          dark: false, 
+          colors: {
+            primary: '#007AFF',
+            background: '#FFFFFF',
+            card: '#FFFFFF',
+            text: '#000000',
+            border: '#E0E0E0',
+            notification: '#FF3B30'
+          },
+          fonts: {
+            regular: {
+              fontFamily: 'System',
+              fontWeight: '400',
+            },
+            medium: {
+              fontFamily: 'System',
+              fontWeight: '500',
+            },
+            bold: {
+              fontFamily: 'System',
+              fontWeight: '700',
+            },
+            heavy: {
+              fontFamily: 'System',
+              fontWeight: '900',
+            }
+          }
+        }}
+      >
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
