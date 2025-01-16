@@ -28,8 +28,98 @@ export default function QuizScreen() {
     for (const course of COURSES) {
       const section = course.sections.find(s => s.id === id);
       if (section && section.type === 'quiz') {
-        const content = JSON.parse(section.content);
-        setQuestions(content.questions);
+        let quizContent: { questions: Question[] } | undefined;
+        
+        // Quiz untuk Modul 1: Pengenalan Python
+        if (section.id === 'PY001_03') {
+          quizContent = {
+            questions: [
+              {
+                type: 'multiple-choice' as const,
+                question: 'Apa itu Python?',
+                options: [
+                  'Bahasa pemrograman tingkat tinggi yang berfokus pada keterbacaan kode',
+                  'Bahasa pemrograman tingkat rendah untuk pemrograman sistem',
+                  'Bahasa markup untuk membuat halaman web',
+                  'Bahasa pemrograman khusus untuk game'
+                ],
+                correctAnswer: 'Bahasa pemrograman tingkat tinggi yang berfokus pada keterbacaan kode',
+                explanation: 'Python adalah bahasa pemrograman tingkat tinggi yang dirancang dengan fokus pada keterbacaan kode, membuatnya mudah dipelajari dan digunakan.'
+              },
+              {
+                type: 'multiple-choice' as const,
+                question: 'Manakah dari berikut yang merupakan keunggulan Python?',
+                options: [
+                  'Sintaks yang kompleks dan sulit dipahami',
+                  'Hanya bisa digunakan untuk web development',
+                  'Mudah dibaca dan ditulis dengan sintaks yang sederhana',
+                  'Hanya berjalan di sistem operasi Windows'
+                ],
+                correctAnswer: 'Mudah dibaca dan ditulis dengan sintaks yang sederhana',
+                explanation: 'Salah satu keunggulan utama Python adalah sintaksnya yang sederhana dan mudah dibaca, membuatnya ideal untuk pemula.'
+              },
+              {
+                type: 'multiple-choice' as const,
+                question: 'Bagaimana cara menampilkan teks "Hello, World!" di Python?',
+                options: [
+                  'console.log("Hello, World!")',
+                  'print("Hello, World!")',
+                  'echo "Hello, World!"',
+                  'System.out.println("Hello, World!")'
+                ],
+                correctAnswer: 'print("Hello, World!")',
+                explanation: 'Di Python, fungsi print() digunakan untuk menampilkan output ke layar. Sintaks yang benar adalah print("Hello, World!").'
+              }
+            ]
+          };
+        }
+        // Quiz untuk Modul 2: Variabel dan Tipe Data
+        else if (section.id === 'PY002_02') {
+          quizContent = {
+            questions: [
+              {
+                type: 'multiple-choice' as const,
+                question: 'Manakah dari berikut yang merupakan tipe data di Python?',
+                options: [
+                  'integer, floating, character',
+                  'int, float, str, bool',
+                  'number, text, boolean',
+                  'var, const, let'
+                ],
+                correctAnswer: 'int, float, str, bool',
+                explanation: 'Python memiliki beberapa tipe data dasar: int (bilangan bulat), float (bilangan desimal), str (string/teks), dan bool (boolean).'
+              },
+              {
+                type: 'multiple-choice' as const,
+                question: 'Bagaimana cara yang benar untuk mendeklarasikan variabel di Python?',
+                options: [
+                  'var x = 10',
+                  'int x = 10',
+                  'x = 10',
+                  'let x = 10'
+                ],
+                correctAnswer: 'x = 10',
+                explanation: 'Di Python, variabel dideklarasikan secara langsung dengan nama variabel diikuti tanda sama dengan dan nilainya, tanpa perlu menentukan tipe data.'
+              },
+              {
+                type: 'multiple-choice' as const,
+                question: 'Apa output dari kode berikut?\nx = 5\ny = "10"\nprint(str(x) + y)',
+                options: [
+                  '15',
+                  '510',
+                  'Error',
+                  '5 + 10'
+                ],
+                correctAnswer: '510',
+                explanation: 'str(x) mengubah angka 5 menjadi string "5", kemudian digabungkan dengan string "10" menghasilkan "510". Di Python, operator + untuk string melakukan penggabungan (concatenation).'
+              }
+            ]
+          };
+        }
+
+        if (quizContent) {
+          setQuestions(quizContent.questions);
+        }
         break;
       }
     }
