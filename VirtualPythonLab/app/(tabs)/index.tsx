@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
 import { Link } from 'expo-router';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
@@ -22,24 +22,24 @@ interface Feature {
 const features: Feature[] = [
   {
     id: 1,
-    title: 'Interactive Learning',
-    description: 'Step-by-step tutorials with hands-on exercises',
+    title: 'Pembelajaran Interaktif',
+    description: 'Tutorial langkah demi langkah dengan latihan praktik',
     icon: 'book.closed.fill',
     color: '#4CAF50',
     route: '/learn',
   },
   {
     id: 2,
-    title: 'Live Coding',
-    description: 'Write and test code directly in the app',
+    title: 'Kode Langsung',
+    description: 'Tulis dan uji kode secara langsung di aplikasi',
     icon: 'chevron.left.forwardslash.chevron.right',
     color: '#2196F3',
     route: '/code',
   },
   {
     id: 3,
-    title: 'Track Progress',
-    description: 'Monitor your learning journey and achievements',
+    title: 'Pantau Progres',
+    description: 'Pantau perjalanan belajar dan pencapaian Anda',
     icon: 'star.fill',
     color: '#9C27B0',
     route: '/profile',
@@ -48,20 +48,24 @@ const features: Feature[] = [
 
 export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
       <ThemedView style={styles.header}>
         <ThemedView style={styles.welcomeBox}>
           <IconSymbol name="hand.wave" size={32} color="#FFD700" />
-          <ThemedText style={styles.welcomeTitle}>Welcome to VPL!</ThemedText>
+          <ThemedText style={styles.welcomeTitle}>Selamat Datang di VPL!</ThemedText>
         </ThemedView>
         <ThemedText style={styles.welcomeText}>
-          Your interactive journey to master Python programming starts here.
-          Learn, practice, and create amazing projects in a fun and engaging way.
+          Perjalanan interaktif Anda untuk menguasai pemrograman Python dimulai di sini.
+          Belajar, berlatih, dan buat proyek yang menakjubkan dengan cara yang menyenangkan.
         </ThemedText>
       </ThemedView>
 
       <ThemedView style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>What We Offer</ThemedText>
+        <ThemedText style={styles.sectionTitle}>Yang Kami Tawarkan</ThemedText>
         <ThemedView style={styles.featuresList}>
           {features.map((feature, index) => (
             <Link key={feature.id} href={feature.route} asChild>
@@ -82,36 +86,41 @@ export default function HomeScreen() {
           ))}
         </ThemedView>
       </ThemedView>
-    </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   header: {
-    marginTop: 60,
     marginBottom: 40,
   },
   welcomeBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 15,
+    padding: 20,
     borderRadius: 20,
     marginBottom: 20,
   },
   welcomeTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginLeft: 10,
+    marginLeft: 15,
+    lineHeight: 32,
   },
   welcomeText: {
     fontSize: 16,
     lineHeight: 24,
     opacity: 0.8,
+    paddingHorizontal: 5,
   },
   section: {
     flex: 1,
@@ -120,6 +129,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
+    lineHeight: 36,
   },
   featuresList: {
     gap: 15,
@@ -141,14 +151,17 @@ const styles = StyleSheet.create({
   },
   featureContent: {
     flex: 1,
+    paddingRight: 10,
   },
   featureTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
+    lineHeight: 24,
   },
   featureDescription: {
     fontSize: 14,
     opacity: 0.7,
+    lineHeight: 20,
   },
 });

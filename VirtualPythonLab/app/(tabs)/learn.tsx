@@ -185,20 +185,23 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingTop: 24,
+    paddingTop: 60,
   },
   header: {
     marginBottom: 24,
     paddingHorizontal: 16,
+    marginTop: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
+    lineHeight: 36,
   },
   subtitle: {
     fontSize: 16,
     opacity: 0.7,
+    lineHeight: 24,
   },
   loadingText: {
     marginTop: 16,

@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { COURSES } from '../../constants/courses';
 import { CourseProgress, SectionProgress } from '../../types/course';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -22,8 +23,24 @@ export default function ProfileScreen() {
     if (user) {
       loadProgress();
       loadProfile();
+
+      // Refresh data setiap 2 detik
+      const interval = setInterval(() => {
+        loadProgress();
+      }, 2000);
+
+      return () => clearInterval(interval);
     }
   }, [user]);
+
+  // Gunakan useFocusEffect untuk refresh saat tab aktif
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user) {
+        loadProgress();
+      }
+    }, [user])
+  );
 
   const loadProfile = async () => {
     try {
@@ -167,44 +184,6 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </ThemedView>
 
-        {/* Modal Edit Nickname */}
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={isEditingNickname}
-          onRequestClose={() => setIsEditingNickname(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <ThemedView style={styles.modalContent}>
-              <ThemedText style={styles.modalTitle}>Ubah Nickname</ThemedText>
-              <TextInput
-                style={styles.nicknameInput}
-                value={tempNickname}
-                onChangeText={setTempNickname}
-                placeholder="Masukkan nickname baru"
-                placeholderTextColor="#666"
-                autoFocus={true}
-                maxLength={20}
-                selectionColor="#66c0f4"
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => setIsEditingNickname(false)}
-                >
-                  <ThemedText style={styles.modalButtonText}>Batal</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.saveButton]}
-                  onPress={handleUpdateNickname}
-                >
-                  <ThemedText style={styles.modalButtonText}>Simpan</ThemedText>
-                </TouchableOpacity>
-              </View>
-            </ThemedView>
-          </View>
-        </Modal>
-
         <ThemedView style={styles.statsSection}>
           <ThemedView style={styles.statsContainer}>
             <ThemedView style={styles.statsCard}>
@@ -224,46 +203,68 @@ export default function ProfileScreen() {
               <ThemedText style={styles.statsLabel}>Materi{'\n'}Selesai</ThemedText>
             </ThemedView>
           </ThemedView>
-        </ThemedView>
 
-        <ThemedView style={styles.progressSection}>
-          {COURSES.map(course => {
-            const completedSections = getCompletedSections(course.code);
-            const totalSections = getTotalSections(course.code);
-            const percentage = Math.round((completedSections / totalSections) * 100) || 0;
+          {courseProgress.map(progress => {
+            const course = COURSES.find(c => c.code === progress.course_code);
+            if (!course) return null;
 
             return (
-              <TouchableOpacity
-                key={course.code}
-                style={styles.courseCard}
-                onPress={() => router.push(`/learn/${course.code}`)}
-              >
+              <ThemedView key={progress.course_code} style={styles.courseProgress}>
                 <ThemedText style={styles.courseTitle}>{course.title}</ThemedText>
-                <ThemedText style={styles.courseProgress}>
-                  {completedSections} dari {totalSections} materi selesai
+                <ThemedText style={styles.progressInfo}>
+                  {progress.progress_percentage}% selesai
                 </ThemedText>
-                <ThemedView style={styles.progressBarWrapper}>
-                  <ThemedView style={styles.progressBar}>
-                    <ThemedView 
-                      style={[
-                        styles.progressFill,
-                        { width: `${percentage}%` },
-                        percentage === 100 && styles.progressComplete,
-                      ]} 
-                    />
-                  </ThemedView>
-                  <ThemedText style={[
-                    styles.percentageText,
-                    percentage === 100 && styles.progressTextComplete
-                  ]}>
-                    {percentage}%
-                  </ThemedText>
+                <ThemedView style={styles.progressBar}>
+                  <ThemedView 
+                    style={[
+                      styles.progressFill,
+                      { width: `${progress.progress_percentage}%` }
+                    ]} 
+                  />
                 </ThemedView>
-              </TouchableOpacity>
+              </ThemedView>
             );
           })}
         </ThemedView>
       </ScrollView>
+
+      {/* Modal Edit Nickname */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isEditingNickname}
+        onRequestClose={() => setIsEditingNickname(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Ubah Nickname</ThemedText>
+            <TextInput
+              style={styles.nicknameInput}
+              value={tempNickname}
+              onChangeText={setTempNickname}
+              placeholder="Masukkan nickname baru"
+              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              autoFocus={true}
+              maxLength={20}
+              selectionColor="#66c0f4"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setIsEditingNickname(false)}
+              >
+                <ThemedText style={styles.modalButtonText}>Batal</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleUpdateNickname}
+              >
+                <ThemedText style={styles.modalButtonText}>Simpan</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -271,138 +272,17 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
   },
   centerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#121212',
-  },
-  profileSection: {
-    backgroundColor: '#121212',
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  nicknameContainer: {
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 4,
-  },
-  nickname: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  editHint: {
-    color: '#66c0f4',
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  email: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 24,
-  },
-  signOutButton: {
-    backgroundColor: '#DC3545',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
-  },
-  signOutText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  statsSection: {
-    padding: 16,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statsCard: {
-    flex: 1,
-    backgroundColor: '#1E1E1E',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 120,
-  },
-  statsNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#66c0f4',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  statsLabel: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  progressSection: {
-    padding: 16,
-  },
-  courseCard: {
-    backgroundColor: '#1E1E1E',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  courseTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  courseProgress: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 16,
-  },
-  progressBarWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  progressBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#66c0f4',
-    borderRadius: 4,
-  },
-  progressComplete: {
-    backgroundColor: '#4CAF50',
-  },
-  progressTextComplete: {
-    color: '#4CAF50',
-  },
-  percentageText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#66c0f4',
-    width: 45,
   },
   message: {
     fontSize: 17,
     marginBottom: 24,
     textAlign: 'center',
-    color: '#fff',
   },
   button: {
     backgroundColor: '#66c0f4',
@@ -415,55 +295,155 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  profileSection: {
+    padding: 20,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  nicknameContainer: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  nickname: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  editHint: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: 4,
+  },
+  email: {
+    fontSize: 16,
+    opacity: 0.8,
+    marginTop: 5,
+  },
+  signOutButton: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  signOutText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  statsSection: {
+    padding: 20,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingHorizontal: 5,
+  },
+  statsCard: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingTop: 25,
+    paddingBottom: 25,
+    margin: 5,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  statsNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#66c0f4',
+    marginBottom: 15,
+    textAlign: 'center',
+    includeFontPadding: false,
+    lineHeight: 40,
+  },
+  statsLabel: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 18,
+    includeFontPadding: false,
+    paddingHorizontal: 5,
+  },
+  courseProgress: {
+    marginTop: 10,
+    padding: 15,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  courseTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  progressInfo: {
+    fontSize: 14,
+    opacity: 0.8,
+    marginBottom: 10,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#66c0f4',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   modalContent: {
-    backgroundColor: '#1E1E1E',
-    width: '100%',
-    borderRadius: 16,
+    width: '80%',
     padding: 20,
+    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 16,
+    marginBottom: 15,
     textAlign: 'center',
+    color: '#fff',
   },
   nicknameInput: {
-    backgroundColor: '#2A2A2A',
-    color: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 20,
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
+    padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+    marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   saveButton: {
     backgroundColor: '#66c0f4',
   },
   modalButtonText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: '#fff',
   },
 }); 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, Alert, View, Text, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
@@ -18,6 +18,7 @@ export default function CourseDetailScreen() {
   const [sectionProgress, setSectionProgress] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [selectedSection, setSelectedSection] = useState<CourseSection | null>(null);
+  const [hasReachedBottom, setHasReachedBottom] = useState(false);
 
   useEffect(() => {
     loadCourse();
@@ -43,6 +44,25 @@ export default function CourseDetailScreen() {
 
         if (!progressError) {
           setProgress(progressData);
+        } else if (progressError.code === 'PGRST116') {
+          // Jika belum ada progress, buat baru
+          const { data: newProgress, error: createError } = await supabase
+            .from('course_progress')
+            .upsert({
+              user_id: user.id,
+              course_code: id,
+              progress_percentage: 0,
+              last_section_id: courseData.sections[0].id,
+              is_completed: false,
+              last_accessed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+          if (!createError) {
+            setProgress(newProgress);
+          }
         }
 
         // Load section progress
@@ -69,11 +89,74 @@ export default function CourseDetailScreen() {
     }
   };
 
-  const handleSectionPress = (section: CourseSection) => {
-    if (section.type === 'text') {
-      setSelectedSection(section);
-    } else {
-      startSection(section);
+  const handleSectionPress = async (section: CourseSection) => {
+    if (!user || !course) return;
+
+    try {
+      // Update progress saat materi dibuka
+      if (section.type === 'text') {
+        const { error: sectionProgressError } = await supabase
+          .from('section_progress')
+          .upsert({
+            user_id: user.id,
+            course_code: course.code,
+            section_id: section.id,
+            is_completed: true,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,course_code,section_id'
+          });
+
+        if (sectionProgressError) throw sectionProgressError;
+
+        // Fetch updated progress
+        const { data: allProgress } = await supabase
+          .from('section_progress')
+          .select('*')
+          .eq('course_code', course.code)
+          .eq('user_id', user.id)
+          .eq('is_completed', true);
+
+        // Update progress percentage
+        const completedSections = allProgress?.length || 0;
+        const totalSections = course.sections.length;
+        const newProgress = Math.round((completedSections / totalSections) * 100);
+
+        // Update course progress
+        const { data: updatedProgress, error: courseProgressError } = await supabase
+          .from('course_progress')
+          .upsert({
+            user_id: user.id,
+            course_code: course.code,
+            progress_percentage: newProgress,
+            last_section_id: section.id,
+            is_completed: newProgress === 100,
+            last_accessed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id,course_code'
+          })
+          .select()
+          .single();
+
+        if (courseProgressError) throw courseProgressError;
+
+        // Update local state
+        setProgress(updatedProgress);
+        setSectionProgress(prev => ({
+          ...prev,
+          [section.id]: true
+        }));
+      }
+
+      // Navigate based on section type
+      if (section.type === 'text') {
+        setSelectedSection(section);
+      } else {
+        startSection(section);
+      }
+    } catch (error) {
+      console.error('Error updating progress:', error);
     }
   };
 
@@ -81,49 +164,65 @@ export default function CourseDetailScreen() {
     if (!user || !course) return;
 
     try {
-      // Create or update course progress
-      const courseProgressData = {
-        user_id: user.id,
-        course_code: course.code,
-        last_section_id: section.id,
-        progress_percentage: Math.round((Object.values(sectionProgress).filter(Boolean).length / course.sections.length) * 100),
-        is_completed: false,
-        last_accessed_at: new Date().toISOString(),
-      };
-
-      const { error: progressError } = await supabase
-        .from('course_progress')
-        .upsert(courseProgressData);
-
-      if (progressError) throw progressError;
-
-      // Create section progress if not exists
+      // Update progress saat quiz dimulai
       const { error: sectionProgressError } = await supabase
         .from('section_progress')
         .upsert({
           user_id: user.id,
           course_code: course.code,
           section_id: section.id,
-          is_completed: false,
+          is_completed: true,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,course_code,section_id'
         });
 
       if (sectionProgressError) throw sectionProgressError;
+
+      // Fetch updated progress
+      const { data: allProgress } = await supabase
+        .from('section_progress')
+        .select('*')
+        .eq('course_code', course.code)
+        .eq('user_id', user.id)
+        .eq('is_completed', true);
+
+      // Update progress percentage
+      const completedSections = allProgress?.length || 0;
+      const totalSections = course.sections.length;
+      const newProgress = Math.round((completedSections / totalSections) * 100);
+
+      // Update course progress
+      const { data: updatedProgress, error: courseProgressError } = await supabase
+        .from('course_progress')
+        .upsert({
+          user_id: user.id,
+          course_code: course.code,
+          progress_percentage: newProgress,
+          last_section_id: section.id,
+          is_completed: newProgress === 100,
+          last_accessed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,course_code'
+        })
+        .select()
+        .single();
+
+      if (courseProgressError) throw courseProgressError;
+
+      // Update local state
+      setProgress(updatedProgress);
+      setSectionProgress(prev => ({
+        ...prev,
+        [section.id]: true
+      }));
 
       // Navigate to the appropriate screen based on section type
       switch (section.type) {
         case 'quiz':
           router.push({
             pathname: `/(quiz)/${section.id}`,
-            params: {
-              courseCode: course.code,
-              sectionId: section.id,
-              title: section.title,
-            }
-          });
-          break;
-        case 'code':
-          router.push({
-            pathname: `/(code)/${section.id}`,
             params: {
               courseCode: course.code,
               sectionId: section.id,
@@ -140,6 +239,76 @@ export default function CourseDetailScreen() {
     } catch (error) {
       console.error('Error starting section:', error);
       Alert.alert('Error', 'Gagal memulai materi');
+    }
+  };
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 20;
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= 
+      contentSize.height - paddingToBottom;
+
+    if (isCloseToBottom) {
+      setHasReachedBottom(true);
+    }
+  };
+
+  const handleCompleteReading = async () => {
+    if (!user || !course || !selectedSection) {
+      Alert.alert('Error', 'Data tidak lengkap');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('section_progress')
+        .upsert({
+          user_id: user.id,
+          course_code: course.code,
+          section_id: selectedSection.id,
+          is_completed: true,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      // Fetch updated progress
+      const { data: allProgress } = await supabase
+        .from('section_progress')
+        .select('*')
+        .eq('course_code', course.code)
+        .eq('user_id', user.id)
+        .eq('is_completed', true);
+
+      // Update progress percentage
+      const completedSections = allProgress?.length || 0;
+      const totalSections = course.sections.length;
+      const newProgress = Math.round((completedSections / totalSections) * 100);
+
+      // Update course progress
+      await supabase
+        .from('course_progress')
+        .upsert({
+          user_id: user.id,
+          course_code: course.code,
+          progress_percentage: newProgress,
+          last_section_id: selectedSection.id,
+          is_completed: newProgress === 100,
+          updated_at: new Date().toISOString(),
+        });
+
+      Alert.alert(
+        'Selamat! 🎉',
+        'Anda telah menyelesaikan materi ini',
+        [
+          {
+            text: 'OK',
+            onPress: () => setSelectedSection(null)
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Gagal menyimpan progress');
     }
   };
 
@@ -179,6 +348,17 @@ export default function CourseDetailScreen() {
       </ThemedView>
     );
   };
+
+  // Tambahkan useEffect untuk auto refresh progress setiap 5 detik
+  useEffect(() => {
+    if (!user || !course) return;
+
+    const interval = setInterval(() => {
+      loadCourse();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [user, course]);
 
   if (loading || !course) {
     return (
@@ -240,7 +420,6 @@ export default function CourseDetailScreen() {
                   styles.sectionItem,
                   { borderLeftColor: 
                     section.type === 'quiz' ? '#FFC107' :
-                    section.type === 'code' ? '#F44336' :
                     '#66c0f4'
                   }
                 ]}
@@ -253,14 +432,11 @@ export default function CourseDetailScreen() {
                       {
                         backgroundColor: 
                           section.type === 'quiz' ? 'rgba(255, 193, 7, 0.1)' :
-                          section.type === 'code' ? 'rgba(244, 67, 54, 0.1)' :
                           'rgba(102, 192, 244, 0.1)',
                       }
                     ]}>
                       {section.type === 'quiz' ? (
                         <IconSymbol name="questionmark.circle.fill" size={24} color="#FFC107" />
-                      ) : section.type === 'code' ? (
-                        <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color="#F44336" />
                       ) : (
                         <IconSymbol name="doc.text" size={24} color="#66c0f4" />
                       )}
@@ -274,15 +450,10 @@ export default function CourseDetailScreen() {
                         {
                           color: 
                             section.type === 'quiz' ? '#FFC107' :
-                            section.type === 'code' ? '#F44336' :
                             '#66c0f4'
                         }
                       ]}>
-                        {section.type === 'text' ? 'Materi'
-                          : section.type === 'quiz' ? 'Kuis'
-                          : section.type === 'code' ? 'Latihan'
-                          : section.type === 'video' ? 'Video'
-                          : 'Materi'}
+                        {section.type === 'quiz' ? 'Kuis' : 'Materi'}
                       </ThemedText>
                     </ThemedView>
                   </ThemedView>
@@ -292,11 +463,7 @@ export default function CourseDetailScreen() {
                     <IconSymbol 
                       name="chevron.right" 
                       size={24} 
-                      color={
-                        section.type === 'quiz' ? '#FFC107' :
-                        section.type === 'code' ? '#F44336' :
-                        '#66c0f4'
-                      } 
+                      color={section.type === 'quiz' ? '#FFC107' : '#66c0f4'} 
                     />
                   )}
                 </ThemedView>
@@ -455,6 +622,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#222',
     padding: 20,
     borderRadius: 12,
+  },
+  completeButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 30,
+    marginHorizontal: 20,
+  },
+  completeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

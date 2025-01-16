@@ -17,7 +17,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Beranda',
           tabBarIcon: ({ color, size }) => (
             <IconSymbol name="house.fill" size={size} color={color} />
           ),
@@ -26,7 +26,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="learn"
         options={{
-          title: 'Learn',
+          title: 'Belajar',
           tabBarIcon: ({ color, size }) => (
             <IconSymbol name="book.closed.fill" size={size} color={color} />
           ),
@@ -35,7 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="code"
         options={{
-          title: 'Code',
+          title: 'Kode',
           tabBarIcon: ({ color, size }) => (
             <IconSymbol name="chevron.left.forwardslash.chevron.right" size={size} color={color} />
           ),
@@ -44,7 +44,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: 'Profil',
           tabBarIcon: ({ color, size }) => (
             <IconSymbol name="person.circle.fill" size={size} color={color} />
           ),

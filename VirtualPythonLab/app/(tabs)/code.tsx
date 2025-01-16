@@ -75,10 +75,26 @@ export default function CodeScreen() {
     setOutput('Menjalankan kode...');
     
     try {
-      // Di sini nantinya akan diintegrasikan dengan backend Python
-      // Untuk sementara kita simulasikan delay
+      // Simulasi eksekusi kode
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setOutput('Hello, World!\nLuas persegi dengan sisi 5 adalah 25');
+      
+      // Menentukan output berdasarkan kode yang dijalankan
+      if (code.includes('Hello, World!') && !code.includes('hitung_luas_persegi')) {
+        setOutput('Hello, World!');
+      } else if (code.includes('calculator')) {
+        setOutput('15'); // Output dari calculator(10, 5, '+')
+      } else if (code.includes('numbers = [1, 2, 3, 4, 5]')) {
+        setOutput(
+          'Original: [1, 2, 3, 4, 5]\n' +
+          'After append: [1, 2, 3, 4, 5, 6]\n' +
+          'After pop: [1, 2, 3, 4, 5]\n' +
+          'Sum: 15'
+        );
+      } else if (code.includes('hitung_luas_persegi')) {
+        setOutput('Hello, World!\nLuas persegi dengan sisi 5 adalah 25');
+      } else {
+        setOutput('// Output akan muncul di sini setelah kode dijalankan');
+      }
     } catch (error: any) {
       setOutput('Error: ' + error.message);
     } finally {
@@ -97,6 +113,7 @@ export default function CodeScreen() {
   const handleUseTemplate = (template: typeof TEMPLATES[0]) => {
     setCode(template.code);
     setShowTemplates(false);
+    setOutput(''); // Reset output saat template baru dipilih
   };
 
   // HTML untuk editor CodeMirror

@@ -7,7 +7,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
 
   const handleRegister = async () => {
     if (!email || !password || !confirmPassword) {
@@ -23,11 +23,13 @@ export default function RegisterScreen() {
     try {
       const { error } = await signUp(email, password);
       if (error) throw error;
-      Alert.alert(
-        'Sukses',
-        'Registrasi berhasil! Silakan login.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
-      );
+
+      // Langsung login setelah register
+      const { error: signInError } = await signIn(email, password);
+      if (signInError) throw signInError;
+
+      // Redirect ke halaman utama
+      router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Gagal mendaftar');
     }

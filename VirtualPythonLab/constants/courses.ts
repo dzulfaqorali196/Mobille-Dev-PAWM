@@ -150,6 +150,7 @@ suhu_float = float(suhu_str)  # 36.6
                     questions: [
                         {
                             id: 1,
+                            type: 'multiple-choice',
                             question: 'Manakah yang merupakan tipe data di Python?',
                             options: ['str', 'string', 'text', 'chars'],
                             correctAnswer: 'str',
@@ -157,6 +158,7 @@ suhu_float = float(suhu_str)  # 36.6
                         },
                         {
                             id: 2,
+                            type: 'multiple-choice',
                             question: 'Bagaimana cara membuat variabel dengan nilai desimal di Python?',
                             options: [
                                 'angka = 3.14',
@@ -169,55 +171,29 @@ suhu_float = float(suhu_str)  # 36.6
                         },
                         {
                             id: 3,
-                            question: 'Manakah yang merupakan nama variabel yang valid di Python?',
+                            type: 'multiple-choice',
+                            question: 'Manakah urutan yang benar dalam membuat dan menggunakan variabel di Python?',
                             options: [
-                                '_nama',
-                                '2nama',
-                                'nama-saya',
-                                'class'
+                                'Masukkan nilai → Tentukan nama → Assignment → Gunakan variabel',
+                                'Tentukan nama → Assignment → Masukkan nilai → Gunakan variabel',
+                                'Assignment → Tentukan nama → Masukkan nilai → Gunakan variabel',
+                                'Gunakan variabel → Tentukan nama → Assignment → Masukkan nilai'
                             ],
-                            correctAnswer: '_nama',
-                            explanation: 'Variabel dapat dimulai dengan underscore, tapi tidak dengan angka atau menggunakan kata kunci Python'
-                        }
-                    ]
-                })
-            },
-            {
-                id: 'PY001_04',
-                title: 'Latihan Kode: Variabel',
-                type: 'code',
-                order_number: 4,
-                content: JSON.stringify({
-                    instructions: `Buatlah variabel-variabel berikut:
-1. nama (string) - Isi dengan nama Anda
-2. umur (integer) - Isi dengan umur Anda
-3. tinggi (float) - Isi dengan tinggi badan Anda dalam cm
-4. is_student (boolean) - Set True jika Anda adalah pelajar/mahasiswa
-
-Kemudian print semua variabel tersebut menggunakan f-string`,
-                    initialCode: `# Tulis kode Anda di sini
-# Contoh penggunaan f-string:
-# nama = "Budi"
-# print(f"Nama saya {nama}")
-
-`,
-                    testCases: [
+                            correctAnswer: 'Tentukan nama → Assignment → Masukkan nilai → Gunakan variabel',
+                            explanation: 'Urutan yang benar dalam membuat dan menggunakan variabel: pilih nama yang sesuai, gunakan operator assignment, isi dengan nilai, lalu gunakan dalam program'
+                        },
                         {
-                            input: '',
-                            expectedOutput: '',
-                            test: `
-def test_solution():
-    # Test tipe data
-    assert isinstance(nama, str), "nama harus bertipe string"
-    assert isinstance(umur, int), "umur harus bertipe integer"
-    assert isinstance(tinggi, float), "tinggi harus bertipe float"
-    assert isinstance(is_student, bool), "is_student harus bertipe boolean"
-    
-    # Test nilai tidak kosong
-    assert len(nama) > 0, "nama tidak boleh kosong"
-    assert umur > 0, "umur harus lebih dari 0"
-    assert tinggi > 0, "tinggi harus lebih dari 0"
-`
+                            id: 4,
+                            type: 'multiple-choice',
+                            question: 'Manakah urutan yang benar dalam melakukan konversi tipe data di Python?',
+                            options: [
+                                'Identifikasi tipe awal → Pilih fungsi konversi → Terapkan fungsi → Simpan hasil',
+                                'Pilih fungsi konversi → Identifikasi tipe → Simpan hasil → Terapkan fungsi',
+                                'Terapkan fungsi → Identifikasi tipe → Pilih fungsi → Simpan hasil',
+                                'Simpan hasil → Terapkan fungsi → Pilih fungsi → Identifikasi tipe'
+                            ],
+                            correctAnswer: 'Identifikasi tipe awal → Pilih fungsi konversi → Terapkan fungsi → Simpan hasil',
+                            explanation: 'Langkah konversi tipe data yang benar: kenali tipe awal, pilih fungsi yang tepat (int(), str(), float()), konversi data, dan simpan hasilnya'
                         }
                     ]
                 })
@@ -343,6 +319,7 @@ warna_rgb.index(128)   # mencari indeks nilai
                     questions: [
                         {
                             id: 1,
+                            type: 'multiple-choice',
                             question: 'Apa perbedaan utama antara List dan Tuple?',
                             options: [
                                 'List bisa diubah, Tuple tidak',
@@ -355,69 +332,42 @@ warna_rgb.index(128)   # mencari indeks nilai
                         },
                         {
                             id: 2,
-                            question: 'Manakah yang benar untuk menambah elemen ke List?',
+                            type: 'multiple-choice',
+                            question: 'Manakah urutan yang benar untuk memanipulasi list di Python?',
                             options: [
-                                'list.append(item)',
-                                'list.add(item)',
-                                'list.push(item)',
-                                'list.insert(item)'
+                                'append() → remove() → insert()',
+                                'insert() → append() → remove()',
+                                'remove() → insert() → append()',
+                                'append() → insert() → remove()'
                             ],
-                            correctAnswer: 'list.append(item)',
-                            explanation: 'append() adalah method bawaan Python untuk menambah elemen di akhir list'
+                            correctAnswer: 'append() → remove() → insert()',
+                            explanation: 'append() menambah di akhir, remove() menghapus item, insert() menambah di indeks tertentu'
                         },
                         {
                             id: 3,
-                            question: 'Bagaimana cara membuat tuple dengan satu elemen?',
+                            type: 'multiple-choice',
+                            question: 'Manakah urutan yang benar untuk mengurutkan dan membalik list?',
                             options: [
-                                '(1,)',
-                                '(1)',
-                                'tuple(1)',
-                                '[1]'
+                                'sort() → reverse()',
+                                'reverse() → sort()',
+                                'sort() → shuffle()',
+                                'reverse() → shuffle()'
                             ],
-                            correctAnswer: '(1,)',
-                            explanation: 'Tuple dengan satu elemen harus menggunakan koma untuk membedakannya dari ekspresi dalam kurung biasa'
-                        }
-                    ]
-                })
-            },
-            {
-                id: 'PY002_03',
-                title: 'Latihan Kode: List dan Tuple',
-                type: 'code',
-                order_number: 3,
-                content: JSON.stringify({
-                    instructions: `Buatlah program yang:
-1. Membuat list 'buah' dengan 3 nama buah
-2. Menambahkan 2 buah baru ke list menggunakan append()
-3. Membuat tuple 'koordinat' dengan nilai (x=10, y=20)
-4. Print panjang list buah dan nilai x dari tuple koordinat`,
-                    initialCode: `# Tulis kode Anda di sini
-# 1. Buat list buah
-
-# 2. Tambah buah baru
-
-# 3. Buat tuple koordinat
-
-# 4. Print hasil
-
-`,
-                    testCases: [
+                            correctAnswer: 'sort() → reverse()',
+                            explanation: 'Pertama urutkan dengan sort(), lalu balik urutan dengan reverse() jika diperlukan'
+                        },
                         {
-                            input: '',
-                            expectedOutput: '',
-                            test: `
-def test_solution():
-    # Test list buah
-    assert isinstance(buah, list), "buah harus bertipe list"
-    assert len(buah) >= 5, "list buah harus memiliki minimal 5 elemen"
-    assert all(isinstance(b, str) for b in buah), "semua elemen buah harus string"
-    
-    # Test tuple koordinat
-    assert isinstance(koordinat, tuple), "koordinat harus bertipe tuple"
-    assert len(koordinat) == 2, "koordinat harus memiliki 2 elemen"
-    assert koordinat[0] == 10, "nilai x harus 10"
-    assert koordinat[1] == 20, "nilai y harus 20"
-`
+                            id: 4,
+                            type: 'multiple-choice',
+                            question: 'Manakah urutan yang benar untuk mengurutkan dan membalik list?',
+                            options: [
+                                'sort() → reverse()',
+                                'reverse() → sort()',
+                                'sort() → shuffle()',
+                                'reverse() → shuffle()'
+                            ],
+                            correctAnswer: 'sort() → reverse()',
+                            explanation: 'Pertama urutkan dengan sort(), lalu balik urutan dengan reverse() jika diperlukan'
                         }
                     ]
                 })

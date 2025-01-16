@@ -1,15 +1,52 @@
-import { Stack } from 'expo-router';
-import { AuthProvider } from '../lib/AuthContext';
 import { ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { useRouter, useSegments } from 'expo-router';
+import { AuthProvider, useAuth } from '../lib/AuthContext';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StyleSheet } from 'react-native';
+
+// Fungsi untuk mengecek apakah user berada di grup autentikasi
+function useProtectedRoute(user: any) {
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === '(auth)';
+    
+    if (!user && !inAuthGroup) {
+      // Redirect ke login jika tidak ada user dan tidak di halaman auth
+      router.replace('/(auth)/login');
+    } else if (user && inAuthGroup) {
+      // Redirect ke home jika sudah login tapi masih di halaman auth
+      router.replace('/(tabs)');
+    }
+  }, [user, segments]);
+}
+
+function RootLayoutNav() {
+  const { user } = useAuth();
+  useProtectedRoute(user);
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(learn)" options={{ headerShown: false }} />
+      <Stack.Screen name="(quiz)" options={{ headerShown: false }} />
+      <Stack.Screen name="(code)" options={{ headerShown: false }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <ThemeProvider 
-        value={{ 
-          dark: false, 
+    <GestureHandlerRootView style={styles.container}>
+      <ThemeProvider
+        value={{
+          dark: false,
           colors: {
-            primary: '#007AFF',
+            primary: '#66c0f4',
             background: '#FFFFFF',
             card: '#FFFFFF',
             text: '#000000',
@@ -36,11 +73,16 @@ export default function RootLayout() {
           }
         }}
       >
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
       </ThemeProvider>
-    </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
