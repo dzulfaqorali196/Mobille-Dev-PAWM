@@ -8,58 +8,49 @@ export interface CourseSection {
   title: string;
   type: SectionType;
   content: string;
-  description?: string;
+  quiz?: Quiz[];
   order_number: number;
-  // Fields untuk quiz
-  questions?: {
-    id: number;
-    question: string;
-    options?: string[];
-    correctAnswer: string | string[];
-    explanation: string;
-  }[];
-  // Fields untuk code practice
-  initial_code?: string;
-  test_cases?: {
-    input: string;
-    expected: string;
-  }[];
+}
+
+export interface Quiz {
+  id: number;
+  question: string;
+  options: string[];
+  correct_answer: number;
 }
 
 export interface Course {
   code: string;
   title: string;
   description: string;
-  thumbnail_url: string;
-  level: 'beginner' | 'intermediate' | 'advanced';
-  estimated_time: string;
-  order_number: number;
+  level: CourseLevel;
+  duration: string;
   sections: CourseSection[];
-  is_published: boolean;
-  created_at: string;
-  updated_at: string;
+  thumbnail_url?: string;
+  estimated_time?: string;
+  order_number?: number;
+  is_published?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Tipe data untuk tracking di Supabase
 export interface CourseProgress {
-  id: string;
+  id: number;
   user_id: string;
   course_code: string;
-  last_section_id: string;
   progress_percentage: number;
   is_completed: boolean;
-  last_accessed_at: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface SectionProgress {
-  id: string;
+  id: number;
   user_id: string;
   course_code: string;
-  section_id: string;
+  section_id: number;
   is_completed: boolean;
-  completed_at?: string;
   created_at: string;
   updated_at: string;
 } 

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, Dimensions, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { StyleSheet, TouchableOpacity, Dimensions, Alert, TextInput } from 'react-native';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { IconSymbol, IconSymbolName } from '../../components/ui/IconSymbol';
-import WebView from 'react-native-webview';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useTheme } from '../../lib/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -65,39 +65,77 @@ print("Sum:", sum(numbers))`,
 ];
 
 export default function CodeScreen() {
+  const { colors, isDark } = useTheme();
   const [code, setCode] = useState(DEFAULT_CODE);
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const ws = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    // Inisialisasi WebSocket saat komponen dimount
+    connectWebSocket();
+    
+    return () => {
+      // Cleanup WebSocket saat komponen unmount
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, []);
+
+  const connectWebSocket = () => {
+    ws.current = new WebSocket('ws://10.43.123.58:8000/ws');
+    
+    ws.current.onopen = () => {
+      console.log('WebSocket Connected');
+      setOutput('Terhubung ke server Python');
+    };
+    
+    ws.current.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      let finalOutput = '';
+      
+      if (response.output) {
+        finalOutput += response.output;
+      }
+      
+      if (response.error) {
+        finalOutput += '\n\nError:\n' + response.error;
+      }
+      
+      setOutput(finalOutput.trim());
+      setIsRunning(false);
+    };
+    
+    ws.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setOutput('Error: Tidak dapat terhubung ke server Python (10.43.123.58:8000)');
+      setIsRunning(false);
+    };
+    
+    ws.current.onclose = () => {
+      console.log('WebSocket Disconnected');
+      setOutput('Terputus dari server Python. Mencoba menghubungkan kembali...');
+      // Mencoba menghubungkan kembali setelah 3 detik
+      setTimeout(connectWebSocket, 3000);
+    };
+  };
 
   const handleRunCode = async () => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+      setOutput('Error: Tidak dapat terhubung ke server Python. Mencoba menghubungkan kembali...');
+      connectWebSocket();
+      return;
+    }
+
     setIsRunning(true);
     setOutput('Menjalankan kode...');
     
     try {
-      // Simulasi eksekusi kode
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Menentukan output berdasarkan kode yang dijalankan
-      if (code.includes('Hello, World!') && !code.includes('hitung_luas_persegi')) {
-        setOutput('Hello, World!');
-      } else if (code.includes('calculator')) {
-        setOutput('15'); // Output dari calculator(10, 5, '+')
-      } else if (code.includes('numbers = [1, 2, 3, 4, 5]')) {
-        setOutput(
-          'Original: [1, 2, 3, 4, 5]\n' +
-          'After append: [1, 2, 3, 4, 5, 6]\n' +
-          'After pop: [1, 2, 3, 4, 5]\n' +
-          'Sum: 15'
-        );
-      } else if (code.includes('hitung_luas_persegi')) {
-        setOutput('Hello, World!\nLuas persegi dengan sisi 5 adalah 25');
-      } else {
-        setOutput('// Output akan muncul di sini setelah kode dijalankan');
-      }
+      ws.current.send(code);
     } catch (error: any) {
       setOutput('Error: ' + error.message);
-    } finally {
       setIsRunning(false);
     }
   };
@@ -106,133 +144,118 @@ export default function CodeScreen() {
     Alert.alert('Simpan Kode', 'Kode berhasil disimpan!');
   };
 
-  const handleShareCode = () => {
-    Alert.alert('Bagikan Kode', 'Fitur berbagi kode akan segera hadir!');
-  };
-
   const handleUseTemplate = (template: typeof TEMPLATES[0]) => {
     setCode(template.code);
     setShowTemplates(false);
-    setOutput(''); // Reset output saat template baru dipilih
+    setOutput('');
   };
 
-  // HTML untuk editor CodeMirror
-  const editorHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
-      <style>
-        body { margin: 0; }
-        .CodeMirror {
-          height: 100vh;
-          font-size: 14px;
-        }
-      </style>
-    </head>
-    <body>
-      <textarea id="code">${code}</textarea>
-      <script>
-        var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
-          mode: "python",
-          theme: "dracula",
-          lineNumbers: true,
-          autoCloseBrackets: true,
-          matchBrackets: true,
-          indentUnit: 4,
-          tabSize: 4,
-          indentWithTabs: true,
-          lineWrapping: true
-        });
-        editor.on("change", function() {
-          window.ReactNativeWebView.postMessage(editor.getValue());
-        });
-      </script>
-    </body>
-    </html>
-  `;
-
   return (
-    <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedView style={styles.headerLeft}>
-          <ThemedText style={styles.title}>Python Editor</ThemedText>
+    <ThemedView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : colors.background }]}>
+      <ThemedView style={[styles.content, { backgroundColor: isDark ? '#0d1117' : colors.background }]}>
+        <ThemedView style={[styles.toolbar, { backgroundColor: isDark ? '#161b22' : colors.card }]}>
+          <ThemedView style={[styles.toolbarLeft, { backgroundColor: isDark ? '#161b22' : colors.card }]}>
+            <ThemedText style={[styles.title, { color: isDark ? '#58a6ff' : colors.text }]}>Python Editor</ThemedText>
+            <ThemedView style={[styles.toolbarActions, { backgroundColor: isDark ? '#161b22' : colors.card }]}>
+              <TouchableOpacity 
+                style={[
+                  styles.actionButton, 
+                  { backgroundColor: isDark ? '#21262d' : colors.background },
+                  showTemplates && [styles.actionButtonActive, { borderColor: isDark ? '#58a6ff' : colors.primary }]
+                ]} 
+                onPress={() => setShowTemplates(!showTemplates)}
+              >
+                <IconSymbol name="doc.text" size={20} color={isDark ? '#58a6ff' : colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.actionButton, { backgroundColor: isDark ? '#21262d' : colors.background }]}
+                onPress={handleSaveCode}
+              >
+                <IconSymbol name="square.and.arrow.down" size={20} color={isDark ? '#58a6ff' : colors.primary} />
+              </TouchableOpacity>
+            </ThemedView>
+          </ThemedView>
+
           <TouchableOpacity 
-            style={styles.templateButton}
-            onPress={() => setShowTemplates(!showTemplates)}
-          >
-            <IconSymbol name="doc.text" size={16} color="#66c0f4" />
-            <ThemedText style={styles.templateButtonText}>Templates</ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
-        <ThemedView style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton} onPress={handleSaveCode}>
-            <IconSymbol name="square.and.arrow.down" size={20} color="#66c0f4" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={handleShareCode}>
-            <IconSymbol name="square.and.arrow.up" size={20} color="#66c0f4" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.runButton, isRunning && styles.runningButton]}
+            style={[
+              styles.runButton, 
+              { backgroundColor: isRunning ? '#FF5722' : '#4CAF50' },
+              isRunning && styles.runningButton
+            ]}
             onPress={handleRunCode}
             disabled={isRunning}
           >
             <IconSymbol 
               name={isRunning ? "stop.fill" : "play.fill"} 
               size={20} 
-              color="white" 
+              color="#0d1117"
             />
-            <ThemedText style={styles.runButtonText}>
+            <ThemedText style={[styles.runButtonText, { color: '#0d1117' }]}>
               {isRunning ? 'Running...' : 'Run Code'}
             </ThemedText>
           </TouchableOpacity>
         </ThemedView>
-      </ThemedView>
 
-      {showTemplates && (
-        <Animated.View 
-          entering={FadeIn}
-          style={styles.templatesContainer}
-        >
-          <ThemedText style={styles.templatesTitle}>Template Kode</ThemedText>
-          {TEMPLATES.map(template => (
-            <TouchableOpacity
-              key={template.id}
-              style={styles.templateItem}
-              onPress={() => handleUseTemplate(template)}
+        <ThemedView style={[styles.mainSection, { backgroundColor: isDark ? '#0d1117' : colors.background }]}>
+          {showTemplates && (
+            <Animated.View 
+              entering={FadeIn}
+              style={[styles.sidebar, { backgroundColor: isDark ? '#161b22' : colors.card }]}
             >
-              <IconSymbol name={template.icon} size={20} color="#66c0f4" />
-              <ThemedText style={styles.templateItemText}>{template.title}</ThemedText>
-              <IconSymbol name="chevron.right" size={16} color="#666" />
-            </TouchableOpacity>
-          ))}
-        </Animated.View>
-      )}
+              <ThemedText style={[styles.sidebarTitle, { color: isDark ? '#8b949e' : `${colors.text}80` }]}>TEMPLATE KODE</ThemedText>
+              {TEMPLATES.map(template => (
+                <TouchableOpacity
+                  key={template.id}
+                  style={[styles.templateItem, { backgroundColor: isDark ? '#21262d' : colors.card }]}
+                  onPress={() => handleUseTemplate(template)}
+                >
+                  <IconSymbol name={template.icon} size={20} color={isDark ? '#58a6ff' : colors.primary} />
+                  <ThemedText style={[styles.templateItemText, { color: isDark ? '#c9d1d9' : colors.text }]}>{template.title}</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </Animated.View>
+          )}
 
-      <ThemedView style={styles.editorContainer}>
-        <WebView
-          source={{ html: editorHTML }}
-          style={styles.editor}
-          onMessage={(event) => setCode(event.nativeEvent.data)}
-        />
-      </ThemedView>
+          <ThemedView style={[styles.editorSection, { backgroundColor: isDark ? '#0d1117' : colors.background }]}>
+            <ThemedView style={[styles.editorContainer, { 
+              backgroundColor: isDark ? '#161b22' : colors.background,
+              borderColor: isDark ? '#30363d' : colors.border 
+            }]}>
+              <TextInput
+                style={[styles.editor, { 
+                  color: isDark ? '#c9d1d9' : colors.text,
+                  backgroundColor: isDark ? '#161b22' : colors.background 
+                }]}
+                value={code}
+                onChangeText={setCode}
+                multiline
+                autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                keyboardType="default"
+                textAlignVertical="top"
+                placeholderTextColor={isDark ? '#8b949e' : `${colors.text}80`}
+              />
+            </ThemedView>
 
-      <ThemedView style={styles.outputContainer}>
-        <ThemedView style={styles.outputHeader}>
-          <ThemedView style={styles.outputTitle}>
-            <IconSymbol name="terminal" size={16} color="#666" />
-            <ThemedText style={styles.outputTitleText}>Output</ThemedText>
+            <ThemedView style={[styles.outputContainer, { backgroundColor: isDark ? '#161b22' : colors.card }]}>
+              <ThemedView style={[styles.outputHeader, { 
+                backgroundColor: isDark ? '#161b22' : colors.card,
+                borderBottomColor: isDark ? '#30363d' : colors.border
+              }]}>
+                <ThemedView style={[styles.outputTitle, { backgroundColor: isDark ? '#161b22' : colors.card }]}>
+                  <IconSymbol name="terminal" size={16} color={isDark ? '#58a6ff' : colors.primary} />
+                  <ThemedText style={[styles.outputTitleText, { color: isDark ? '#58a6ff' : colors.primary }]}>Output</ThemedText>
+                </ThemedView>
+                <TouchableOpacity onPress={() => setOutput('')}>
+                  <IconSymbol name="trash" size={20} color={isDark ? '#8b949e' : `${colors.text}80`} />
+                </TouchableOpacity>
+              </ThemedView>
+              <ThemedView style={[styles.outputContent, { backgroundColor: isDark ? '#161b22' : colors.card }]}>
+                <ThemedText style={[styles.outputText, { color: isDark ? '#c9d1d9' : colors.text }]}>{output}</ThemedText>
+              </ThemedView>
+            </ThemedView>
           </ThemedView>
-          <TouchableOpacity onPress={() => setOutput('')}>
-            <IconSymbol name="trash" size={20} color="#666" />
-          </TouchableOpacity>
-        </ThemedView>
-        <ThemedView style={styles.outputContent}>
-          <ThemedText style={styles.outputText}>{output}</ThemedText>
         </ThemedView>
       </ThemedView>
     </ThemedView>
@@ -242,48 +265,45 @@ export default function CodeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    paddingTop: 40,
   },
-  header: {
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  headerLeft: {
+  toolbarLeft: {
     flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 12,
   },
-  templateButton: {
+  toolbarActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+    gap: 8,
   },
-  templateButtonText: {
-    color: '#66c0f4',
-    fontSize: 14,
-  },
-  iconButton: {
+  actionButton: {
     padding: 8,
-    backgroundColor: 'rgba(102, 192, 244, 0.1)',
     borderRadius: 8,
+  },
+  actionButtonActive: {
+    borderWidth: 1,
   },
   runButton: {
     backgroundColor: '#4CAF50',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
     gap: 8,
   },
@@ -291,53 +311,61 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF5722',
   },
   runButtonText: {
-    color: 'white',
     fontWeight: 'bold',
+    fontSize: 14,
   },
-  templatesContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  mainSection: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 16,
+  },
+  sidebar: {
+    width: 200,
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
+    padding: 12,
   },
-  templatesTitle: {
-    fontSize: 16,
+  sidebarTitle: {
+    fontSize: 12,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   templateItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 8,
+    gap: 8,
+    borderRadius: 8,
   },
   templateItemText: {
     flex: 1,
-    marginLeft: 10,
     fontSize: 14,
+  },
+  editorSection: {
+    flex: 1,
+    gap: 16,
   },
   editorContainer: {
     flex: 1,
-    backgroundColor: '#282a36',
     borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 20,
+    borderWidth: 1,
   },
   editor: {
     flex: 1,
+    padding: 16,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: 'SpaceMono',
   },
   outputContainer: {
-    height: 150,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    height: 160,
     borderRadius: 12,
-    padding: 15,
   },
   outputHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    padding: 12,
+    borderBottomWidth: 1,
   },
   outputTitle: {
     flexDirection: 'row',
@@ -345,15 +373,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   outputTitleText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   outputContent: {
     flex: 1,
+    padding: 12,
   },
   outputText: {
-    fontSize: 14,
-    opacity: 0.8,
+    fontSize: 13,
+    lineHeight: 18,
     fontFamily: 'SpaceMono',
   },
 }); 

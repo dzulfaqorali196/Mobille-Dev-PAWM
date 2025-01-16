@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, Dimensions } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, Dimensions, View, Text } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
@@ -8,14 +8,22 @@ import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Course, CourseProgress } from '../../types/course';
 import { COURSES } from '../../constants/courses';
+import { useTheme } from '../../lib/ThemeContext';
+import { Stack } from 'expo-router';
+import { Link } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
 export default function LearnScreen() {
   const { user } = useAuth();
-  const [progress, setProgress] = useState<Record<string, CourseProgress>>({});
-  const [refreshing, setRefreshing] = useState(false);
+  const [courseProgress, setCourseProgress] = useState<Record<string, CourseProgress>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { colors, isDark } = useTheme();
+
+  useEffect(() => {
+    loadProgress();
+  }, [user]);
 
   const loadProgress = async () => {
     if (!user) {
@@ -24,19 +32,19 @@ export default function LearnScreen() {
     }
 
     try {
-      const { data: progressData, error: progressError } = await supabase
+      const { data, error } = await supabase
         .from('course_progress')
         .select('*')
         .eq('user_id', user.id);
 
-      if (progressError) throw progressError;
+      if (error) throw error;
 
-      const progressMap = (progressData || []).reduce((acc: Record<string, CourseProgress>, curr: CourseProgress) => {
+      const progressMap = (data || []).reduce((acc: Record<string, CourseProgress>, curr) => {
         acc[curr.course_code] = curr;
         return acc;
       }, {});
 
-      setProgress(progressMap);
+      setCourseProgress(progressMap);
     } catch (error) {
       console.error('Error loading progress:', error);
     } finally {
@@ -44,15 +52,11 @@ export default function LearnScreen() {
     }
   };
 
-  const onRefresh = async () => {
+  const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     await loadProgress();
     setRefreshing(false);
-  };
-
-  useEffect(() => {
-    loadProgress();
-  }, [user]);
+  }, []);
 
   const getLevelColor = (level: string) => {
     switch (level) {
@@ -67,111 +71,123 @@ export default function LearnScreen() {
     }
   };
 
-  const renderCourseCard = (course: Course) => {
-    const courseProgress = progress[course.code];
-    
-    return (
-      <TouchableOpacity
-        key={course.code}
-        style={styles.courseCard}
-        onPress={() => router.push(`/(learn)/${course.code}`)}
-        activeOpacity={0.7}
-      >
-        <ThemedView style={styles.thumbnailContainer}>
-          {course.thumbnail_url ? (
-            <Image 
-              source={{ uri: course.thumbnail_url }} 
-              style={styles.thumbnail}
-              resizeMode="contain"
-            />
-          ) : (
-            <ThemedView style={styles.placeholderThumbnail}>
-              <IconSymbol name="book.fill" size={40} color="#66c0f4" />
-              <ThemedText style={styles.placeholderText}>Python</ThemedText>
-            </ThemedView>
-          )}
-        </ThemedView>
-        <ThemedView style={styles.courseInfo}>
-          <ThemedView style={styles.courseHeader}>
-            <ThemedText style={styles.courseTitle}>{course.title}</ThemedText>
-            <ThemedView
-              style={[
-                styles.levelBadge,
-                { backgroundColor: getLevelColor(course.level) },
-              ]}
-            >
-              <ThemedText style={styles.levelText}>
-                {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
-              </ThemedText>
-            </ThemedView>
-          </ThemedView>
-          
-          <ThemedText style={styles.courseDescription} numberOfLines={2}>
-            {course.description}
-          </ThemedText>
-          
-          <ThemedView style={styles.courseMetadata}>
-            <ThemedView style={styles.metadataItem}>
-              <IconSymbol name="clock.fill" size={16} color="#66c0f4" />
-              <ThemedText style={styles.metadataText}>
-                {course.estimated_time}
-              </ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.metadataItem}>
-              <IconSymbol name="book.fill" size={16} color="#66c0f4" />
-              <ThemedText style={styles.metadataText}>
-                {course.sections.length} Materi
-              </ThemedText>
-            </ThemedView>
-          </ThemedView>
-
-          {courseProgress && (
-            <ThemedView style={styles.progressContainer}>
-              <ThemedView style={styles.progressBar}>
-                <ThemedView
-                  style={[
-                    styles.progressFill,
-                    { width: `${courseProgress.progress_percentage}%` },
-                  ]}
-                />
-              </ThemedView>
-              <ThemedText style={styles.progressText}>
-                {courseProgress.progress_percentage}% Selesai
-              </ThemedText>
-            </ThemedView>
-          )}
-        </ThemedView>
-      </TouchableOpacity>
-    );
-  };
-
   if (loading) {
     return (
       <ThemedView style={[styles.container, styles.centerContent]}>
-        <IconSymbol name="arrow.clockwise" size={40} color="#66c0f4" />
-        <ThemedText style={styles.loadingText}>Memuat Materi...</ThemedText>
+        <IconSymbol name="arrow.clockwise" size={40} color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Memuat Materi...
+        </Text>
       </ThemedView>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <ThemedView style={styles.header}>
-        <ThemedText style={styles.title}>Materi Pembelajaran</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Pelajari Python dari dasar hingga mahir
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.courseList}>
-        {COURSES.map(renderCourseCard)}
-      </ThemedView>
-    </ScrollView>
+    <ThemedView style={[styles.container, { backgroundColor: isDark ? '#1b2838' : colors.background }]}>
+      <Stack.Screen
+        options={{
+          title: 'Materi',
+          headerShown: true,
+        }}
+      />
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.text}
+          />
+        }
+      >
+        {COURSES.map(course => {
+          const progress = courseProgress[course.code];
+          return (
+            <Link
+              key={course.code}
+              href={{
+                pathname: `/(learn)/${course.code}`,
+              }}
+              asChild
+            >
+              <TouchableOpacity>
+                <ThemedView style={[styles.courseCard, { 
+                  backgroundColor: isDark ? '#2a475e' : colors.card,
+                  borderLeftWidth: 3,
+                  borderLeftColor: course.level === 'beginner' ? '#4CAF50' : 
+                                  course.level === 'intermediate' ? '#FFC107' : '#F44336'
+                }]}>
+                  {course.thumbnail_url ? (
+                    <Image
+                      source={{ uri: course.thumbnail_url }}
+                      style={styles.thumbnail}
+                    />
+                  ) : (
+                    <View style={[styles.placeholderThumbnail, { backgroundColor: isDark ? '#1b2838' : colors.border }]}>
+                      <IconSymbol 
+                        name={course.code === 'PY001' ? 'book.fill' : 'doc.text.fill'} 
+                        size={40} 
+                        color={colors.primary} 
+                      />
+                    </View>
+                  )}
+                  <View style={styles.courseInfo}>
+                    <View style={styles.titleRow}>
+                      <Text style={[styles.courseTitle, { color: isDark ? '#c7d5e0' : colors.text }]}>
+                        {course.title}
+                      </Text>
+                      <View style={[
+                        styles.levelBadge,
+                        {
+                          backgroundColor:
+                            course.level === 'beginner'
+                              ? '#4CAF50'
+                              : course.level === 'intermediate'
+                              ? '#FFC107'
+                              : '#F44336',
+                        }
+                      ]}>
+                        <Text style={styles.levelText}>
+                          {course.level === 'beginner' ? 'Beginner' :
+                           course.level === 'intermediate' ? 'Intermediate' : 'Advanced'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text 
+                      style={[
+                        styles.courseDescription, 
+                        { color: isDark ? '#8f98a0' : colors.text, opacity: 0.8 }
+                      ]} 
+                      numberOfLines={2}
+                    >
+                      {course.description}
+                    </Text>
+                    <View style={styles.courseFooter}>
+                      <View style={styles.metadataItem}>
+                        <IconSymbol name="clock" size={16} color={isDark ? '#8f98a0' : colors.text} />
+                        <Text style={[
+                          styles.metadataText, 
+                          { color: isDark ? '#8f98a0' : colors.text }
+                        ]}>
+                          {course.duration}
+                        </Text>
+                      </View>
+                      {progress && (
+                        <Text style={[styles.progressText, { color: colors.primary }]}>
+                          {progress.progress_percentage}% Selesai
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </ThemedView>
+              </TouchableOpacity>
+            </Link>
+          );
+        })}
+      </ScrollView>
+    </ThemedView>
   );
 }
 
@@ -183,97 +199,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
-    padding: 16,
-    paddingTop: 60,
-  },
-  header: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
-    marginTop: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    lineHeight: 36,
-  },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
-    lineHeight: 24,
-  },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
   },
-  courseList: {
-    gap: 16,
+  scrollView: {
+    flex: 1,
   },
-  courseCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  thumbnailContainer: {
-    height: 160,
-    backgroundColor: 'rgba(102, 192, 244, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  scrollContent: {
     padding: 16,
   },
+  courseCard: {
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
   thumbnail: {
-    width: '80%',
-    height: '80%',
-    resizeMode: 'contain',
+    width: '100%',
+    height: 160,
+    resizeMode: 'cover',
   },
   placeholderThumbnail: {
-    alignItems: 'center',
+    width: '100%',
+    height: 160,
     justifyContent: 'center',
-  },
-  placeholderText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: '#66c0f4',
+    alignItems: 'center',
   },
   courseInfo: {
     padding: 16,
   },
-  courseHeader: {
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
   courseTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
   },
   courseDescription: {
     fontSize: 14,
-    opacity: 0.8,
     marginBottom: 16,
-    lineHeight: 20,
-  },
-  courseMetadata: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  metadataItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metadataText: {
-    fontSize: 14,
     opacity: 0.8,
   },
   levelBadge: {
@@ -286,22 +255,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  progressContainer: {
-    gap: 8,
+  courseFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  progressBar: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 2,
-    overflow: 'hidden',
+  metadataItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#66c0f4',
+  metadataText: {
+    fontSize: 14,
+    opacity: 0.8,
   },
   progressText: {
-    fontSize: 12,
-    opacity: 0.8,
-    textAlign: 'right',
+    fontSize: 14,
+    fontWeight: '500',
   },
 }); 

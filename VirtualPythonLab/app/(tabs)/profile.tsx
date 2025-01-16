@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, View } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, View, Text } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
@@ -9,6 +9,9 @@ import { supabase } from '../../lib/supabase';
 import { COURSES } from '../../constants/courses';
 import { CourseProgress, SectionProgress } from '../../types/course';
 import { useFocusEffect } from '@react-navigation/native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '../../lib/ThemeContext';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -18,6 +21,9 @@ export default function ProfileScreen() {
   const [nickname, setNickname] = useState('');
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [tempNickname, setTempNickname] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const { isDark, toggleTheme, colors } = useTheme();
 
   useEffect(() => {
     if (user) {
@@ -44,18 +50,18 @@ export default function ProfileScreen() {
 
   const loadProfile = async () => {
     try {
-      // Cek apakah profile sudah ada
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .select('nickname')
-        .eq('user_id', user?.id);
+        .select('nickname, avatar_url')
+        .eq('user_id', user?.id)
+        .single();
 
       if (fetchError) throw fetchError;
 
-      if (existingProfile && existingProfile.length > 0) {
-        setNickname(existingProfile[0].nickname);
+      if (existingProfile) {
+        setNickname(existingProfile.nickname);
+        setProfileImage(existingProfile.avatar_url);
       } else {
-        // Buat profile baru jika belum ada
         const username = user?.email?.split('@')[0] || '';
         const { error: insertError } = await supabase
           .from('profiles')
@@ -138,6 +144,234 @@ export default function ProfileScreen() {
     }
   };
 
+  const uploadImage = async (uri: string): Promise<string> => {
+    try {
+      console.log('Mulai upload gambar...');
+      console.log('URI:', uri);
+      
+      // Dapatkan ekstensi file dengan cara yang lebih aman
+      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      
+      // Validasi tipe file
+      if (!['jpg', 'jpeg', 'png'].includes(fileExt)) {
+        throw new Error('Format file tidak didukung (gunakan JPG atau PNG)');
+      }
+
+      const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+      console.log('Nama file:', fileName);
+
+      // Konversi gambar ke base64 dengan timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30 detik timeout
+
+      try {
+        const response = await fetch(uri, {
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        clearTimeout(timeout);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        console.log('Blob size:', blob.size);
+        
+        if (blob.size > 5 * 1024 * 1024) { // 5MB
+          throw new Error('Ukuran file terlalu besar (maksimal 5MB)');
+        }
+      
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = async () => {
+            try {
+              if (!reader.result || typeof reader.result !== 'string') {
+                throw new Error('Gagal membaca file sebagai base64');
+              }
+
+              const base64String = reader.result;
+              const base64Data = base64String.split(',')[1]; // Ambil data setelah prefix
+              
+              if (!base64Data) {
+                throw new Error('Data base64 tidak valid');
+              }
+              
+              console.log('Ukuran base64:', base64Data.length);
+              
+              // Upload ke Supabase Storage
+              const { data, error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(fileName, decode(base64Data), {
+                  contentType: `image/${fileExt}`,
+                  upsert: true
+                });
+
+              if (uploadError) {
+                console.error('Error upload ke storage:', uploadError);
+                reject(new Error(uploadError.message));
+                return;
+              }
+
+              console.log('Upload berhasil:', data);
+
+              // Dapatkan public URL
+              const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(fileName);
+
+              console.log('Public URL:', publicUrl);
+
+              // Update profile dengan avatar_url baru
+              const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('user_id', user?.id);
+
+              if (updateError) {
+                console.error('Error update profile:', updateError);
+                reject(new Error(updateError.message));
+                return;
+              }
+
+              console.log('Profile berhasil diupdate');
+              resolve(publicUrl);
+            } catch (error) {
+              console.error('Error dalam onload:', error);
+              reject(error);
+            }
+          };
+          
+          reader.onerror = () => {
+            console.error('Error membaca file');
+            reject(new Error('Gagal membaca file'));
+          };
+          
+          reader.readAsDataURL(blob);
+        });
+      } catch (fetchError: any) {
+        clearTimeout(timeout);
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Waktu request terlalu lama, silakan coba lagi');
+        }
+        throw fetchError;
+      }
+    } catch (error: any) {
+      console.error('Error detail lengkap:', error);
+      if (error.message.includes('Network request failed')) {
+        throw new Error('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+      }
+      throw new Error(error.message || 'Gagal mengupload gambar');
+    }
+  };
+
+  // Fungsi untuk decode base64
+  function decode(base64: string) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const lookup = new Uint8Array(256);
+    for (let i = 0; i < chars.length; i++) {
+      lookup[chars.charCodeAt(i)] = i;
+    }
+    
+    const bytes = new Uint8Array(Math.floor((base64.length * 3) / 4));
+    let a, b, c, d;
+    let p = 0;
+    
+    for (let i = 0; i < base64.length; i += 4) {
+      a = lookup[base64.charCodeAt(i)];
+      b = lookup[base64.charCodeAt(i + 1)];
+      c = lookup[base64.charCodeAt(i + 2)];
+      d = lookup[base64.charCodeAt(i + 3)];
+      
+      bytes[p++] = (a << 2) | (b >> 4);
+      bytes[p++] = ((b & 15) << 4) | (c >> 2);
+      bytes[p++] = ((c & 3) << 6) | (d & 63);
+    }
+    
+    return bytes;
+  }
+
+  const pickImage = async (type: 'camera' | 'gallery') => {
+    try {
+      let result;
+
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1] as [number, number],
+        quality: 0.3,
+        base64: false,
+        exif: false
+      };
+
+      if (type === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Izin Ditolak', 'Maaf, kami membutuhkan izin kamera untuk fitur ini!');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Izin Ditolak', 'Maaf, kami membutuhkan izin galeri untuk fitur ini!');
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
+
+      if (!result.canceled && result.assets[0]) {
+        setModalVisible(false);
+        
+        // Tampilkan loading dengan ActivityIndicator
+        Alert.alert(
+          'Mengupload',
+          'Mohon tunggu sebentar...',
+          [],
+          { cancelable: false }
+        );
+        
+        try {
+          const publicUrl = await uploadImage(result.assets[0].uri);
+          setProfileImage(publicUrl);
+          Alert.alert('Sukses', 'Foto profil berhasil diperbarui');
+        } catch (error: any) {
+          console.error('Error upload:', error);
+          Alert.alert(
+            'Gagal',
+            'Tidak dapat mengupload foto. ' + (error.message || 'Silakan coba lagi.')
+          );
+        }
+      }
+    } catch (error: any) {
+      console.error('Error picking image:', error);
+      Alert.alert(
+        'Error',
+        'Gagal mengambil foto. ' + (error.message || 'Silakan coba lagi.')
+      );
+    }
+  };
+
+  const removeProfileImage = async () => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setProfileImage(null);
+      setModalVisible(false);
+      Alert.alert('Sukses', 'Foto profil berhasil dihapus');
+    } catch (error) {
+      console.error('Error removing profile image:', error);
+      Alert.alert('Error', 'Gagal menghapus foto profil');
+    }
+  };
+
   if (!user) {
     return (
       <ThemedView style={[styles.container, styles.centerContent]}>
@@ -162,9 +396,33 @@ export default function ProfileScreen() {
           headerShown: true,
         }}
       />
-      <ScrollView style={styles.container}>
-        <ThemedView style={styles.profileSection}>
-          <IconSymbol name="person.circle.fill" size={100} color="#66c0f4" />
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.profileSection, { 
+          backgroundColor: colors.card,
+          borderBottomColor: colors.border 
+        }]}>
+          <TouchableOpacity 
+            style={styles.profileImageContainer}
+            onPress={() => setModalVisible(true)}
+          >
+            <View style={styles.profileImage}>
+              {profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  style={styles.image}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={styles.defaultProfileImage}>
+                  <IconSymbol name="person.circle.fill" size={80} color="#999" />
+                  <ThemedText style={styles.changePhotoText}>Ubah Foto</ThemedText>
+                </View>
+              )}
+            </View>
+            <View style={styles.editBadge}>
+              <ThemedText style={styles.editBadgeText}>Edit</ThemedText>
+            </View>
+          </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.nicknameContainer}
@@ -173,59 +431,91 @@ export default function ProfileScreen() {
               setIsEditingNickname(true);
             }}
           >
-            <ThemedText style={styles.nickname}>{nickname}</ThemedText>
-            <ThemedText style={styles.editHint}>(Ketuk untuk mengubah)</ThemedText>
+            <ThemedText style={[styles.nickname, { color: isDark ? '#c7d5e0' : '#000000' }]}>{nickname}</ThemedText>
+            <ThemedText style={[styles.editHint, { color: isDark ? '#66c0f4' : colors.primary }]}>(Ketuk untuk mengubah)</ThemedText>
           </TouchableOpacity>
           
-          <ThemedText style={styles.email}>{user?.email}</ThemedText>
+          <ThemedText style={[styles.email, { color: isDark ? '#c7d5e0' : '#000000' }]}>{user?.email}</ThemedText>
           
+          <TouchableOpacity 
+            style={[styles.themeToggle, { 
+              backgroundColor: isDark ? '#161b22' : colors.card,
+              borderColor: isDark ? '#30363d' : colors.border,
+            }]} 
+            onPress={toggleTheme}
+          >
+            <IconSymbol 
+              name={isDark ? "moon.fill" : "sun.max.fill"} 
+              size={24} 
+              color={isDark ? '#58a6ff' : colors.primary} 
+            />
+            <ThemedText style={[styles.themeToggleText, { color: isDark ? '#c9d1d9' : colors.text }]}>
+              {isDark ? 'Light Mode' : 'Dark Mode'}
+            </ThemedText>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
             <ThemedText style={styles.signOutText}>Keluar</ThemedText>
           </TouchableOpacity>
-        </ThemedView>
+        </View>
 
-        <ThemedView style={styles.statsSection}>
-          <ThemedView style={styles.statsContainer}>
-            <ThemedView style={styles.statsCard}>
-              <ThemedText style={styles.statsNumber}>{courseProgress.length}</ThemedText>
-              <ThemedText style={styles.statsLabel}>Kursus{'\n'}Dimulai</ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.statsCard}>
-              <ThemedText style={styles.statsNumber}>
+        <View style={[styles.statsSection, { backgroundColor: colors.background }]}>
+          <View style={styles.statsContainer}>
+            <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
+              <Text style={[styles.statsNumber, { color: colors.primary }]}>
+                {courseProgress.length}
+              </Text>
+              <Text style={[styles.statsLabel, { color: colors.text }]}>
+                Kursus{'\n'}Dimulai
+              </Text>
+            </View>
+            <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
+              <Text style={[styles.statsNumber, { color: colors.primary }]}>
                 {courseProgress.filter(p => p.is_completed).length}
-              </ThemedText>
-              <ThemedText style={styles.statsLabel}>Kursus{'\n'}Selesai</ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.statsCard}>
-              <ThemedText style={styles.statsNumber}>
+              </Text>
+              <Text style={[styles.statsLabel, { color: colors.text }]}>
+                Kursus{'\n'}Selesai
+              </Text>
+            </View>
+            <View style={[styles.statsCard, { backgroundColor: colors.card }]}>
+              <Text style={[styles.statsNumber, { color: colors.primary }]}>
                 {sectionProgress.filter(p => p.is_completed).length}
-              </ThemedText>
-              <ThemedText style={styles.statsLabel}>Materi{'\n'}Selesai</ThemedText>
-            </ThemedView>
-          </ThemedView>
+              </Text>
+              <Text style={[styles.statsLabel, { color: colors.text }]}>
+                Materi{'\n'}Selesai
+              </Text>
+            </View>
+          </View>
 
           {courseProgress.map(progress => {
             const course = COURSES.find(c => c.code === progress.course_code);
             if (!course) return null;
 
             return (
-              <ThemedView key={progress.course_code} style={styles.courseProgress}>
-                <ThemedText style={styles.courseTitle}>{course.title}</ThemedText>
-                <ThemedText style={styles.progressInfo}>
+              <View key={progress.course_code} 
+                style={[styles.courseProgress, { backgroundColor: colors.card }]}
+              >
+                <Text style={[styles.courseTitle, { color: colors.text }]}>
+                  {course.title}
+                </Text>
+                <Text style={[styles.progressInfo, { color: colors.primary }]}>
                   {progress.progress_percentage}% selesai
-                </ThemedText>
-                <ThemedView style={styles.progressBar}>
-                  <ThemedView 
+                </Text>
+                <View style={[styles.progressBar, { backgroundColor: colors.background }]}>
+                  <View 
                     style={[
                       styles.progressFill,
-                      { width: `${progress.progress_percentage}%` }
+                      { 
+                        width: `${progress.progress_percentage}%`,
+                        backgroundColor: colors.primary 
+                      }
                     ]} 
                   />
-                </ThemedView>
-              </ThemedView>
+                </View>
+              </View>
             );
           })}
-        </ThemedView>
+        </View>
       </ScrollView>
 
       {/* Modal Edit Nickname */}
@@ -236,17 +526,23 @@ export default function ProfileScreen() {
         onRequestClose={() => setIsEditingNickname(false)}
       >
         <View style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
-            <ThemedText style={styles.modalTitle}>Ubah Nickname</ThemedText>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Ubah Nickname
+            </Text>
             <TextInput
-              style={styles.nicknameInput}
+              style={[styles.nicknameInput, { 
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                color: colors.text
+              }]}
               value={tempNickname}
               onChangeText={setTempNickname}
               placeholder="Masukkan nickname baru"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              placeholderTextColor={colors.text + '80'}
               autoFocus={true}
               maxLength={20}
-              selectionColor="#66c0f4"
+              selectionColor={colors.primary}
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity 
@@ -262,8 +558,46 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.modalButtonText}>Simpan</ThemedText>
               </TouchableOpacity>
             </View>
-          </ThemedView>
+          </View>
         </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Foto profil</ThemedText>
+            <TouchableOpacity 
+              style={styles.modalOption}
+              onPress={() => pickImage('camera')}
+            >
+              <IconSymbol name="camera" size={24} color="#4CAF50" />
+              <ThemedText style={styles.modalOptionText}>Kamera</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalOption}
+              onPress={() => pickImage('gallery')}
+            >
+              <IconSymbol name="photo" size={24} color="#4CAF50" />
+              <ThemedText style={styles.modalOptionText}>Galeri</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.modalOption}
+              onPress={removeProfileImage}
+            >
+              <IconSymbol name="person.crop.circle" size={24} color="#4CAF50" />
+              <ThemedText style={styles.modalOptionText}>Hapus Foto</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -299,7 +633,8 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: '#2a475e',
+    backgroundColor: '#1b2838',
   },
   nicknameContainer: {
     marginTop: 10,
@@ -312,45 +647,42 @@ const styles = StyleSheet.create({
   },
   editHint: {
     fontSize: 12,
-    opacity: 0.6,
     marginTop: 4,
   },
   email: {
     fontSize: 16,
-    opacity: 0.8,
     marginTop: 5,
   },
   signOutButton: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#c23d3d',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
     marginTop: 20,
   },
   signOutText: {
-    color: 'white',
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   statsSection: {
     padding: 20,
+    backgroundColor: '#171a21',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
-    paddingHorizontal: 5,
   },
   statsCard: {
     flex: 1,
     paddingHorizontal: 10,
-    paddingTop: 25,
-    paddingBottom: 25,
-    margin: 5,
+    paddingVertical: 20,
+    marginHorizontal: 5,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#2a475e',
   },
   statsNumber: {
     fontSize: 32,
@@ -364,7 +696,7 @@ const styles = StyleSheet.create({
   statsLabel: {
     fontSize: 14,
     textAlign: 'center',
-    opacity: 0.8,
+    color: '#c7d5e0',
     lineHeight: 18,
     includeFontPadding: false,
     paddingHorizontal: 5,
@@ -373,21 +705,22 @@ const styles = StyleSheet.create({
     marginTop: 10,
     padding: 15,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#2a475e',
   },
   courseTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
+    color: '#c7d5e0',
   },
   progressInfo: {
     fontSize: 14,
-    opacity: 0.8,
+    color: '#66c0f4',
     marginBottom: 10,
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#171a21',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -397,31 +730,31 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    width: '80%',
+    backgroundColor: '#1b2838',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 20,
-    borderRadius: 12,
-    backgroundColor: '#1a1a1a',
+    paddingBottom: 30,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: 'center',
-    color: '#fff',
+    color: '#c7d5e0',
   },
   nicknameInput: {
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: '#2a475e',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#fff',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: '#c7d5e0',
+    backgroundColor: '#2a475e',
     marginBottom: 20,
   },
   modalButtons: {
@@ -436,7 +769,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#2a475e',
   },
   saveButton: {
     backgroundColor: '#66c0f4',
@@ -444,6 +777,102 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#c7d5e0',
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 30,
+    position: 'relative',
+    width: 120,
+    height: 120,
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+    backgroundColor: '#2a475e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  defaultProfileImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2a475e',
+    position: 'relative',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  changePhotoText: {
+    position: 'absolute',
+    bottom: '25%',
+    fontSize: 12,
+    color: '#c7d5e0',
+    textAlign: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    right: -8,
+    bottom: -8,
+    backgroundColor: '#66c0f4',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  editBadgeText: {
+    color: '#171a21',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    backgroundColor: '#4CAF50',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: '#2a475e',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    marginLeft: 15,
+    color: '#c7d5e0',
+  },
+  innerCameraIcon: {
+    position: 'absolute',
+    bottom: '20%',
+  },
+  themeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 12,
+    marginBottom: 12,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  themeToggleText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 }); 

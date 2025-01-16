@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
-import { Link } from 'expo-router';
+import { StyleSheet, TouchableOpacity, Dimensions, ScrollView, View, Text } from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { IconSymbol, IconSymbolName } from '../../components/ui/IconSymbol';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useTheme } from '../../lib/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -47,45 +48,50 @@ const features: Feature[] = [
 ];
 
 export default function HomeScreen() {
-  return (
-    <ScrollView 
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      <ThemedView style={styles.header}>
-        <ThemedView style={styles.welcomeBox}>
-          <IconSymbol name="hand.wave" size={32} color="#FFD700" />
-          <ThemedText style={styles.welcomeTitle}>Selamat Datang di VPL!</ThemedText>
-        </ThemedView>
-        <ThemedText style={styles.welcomeText}>
-          Perjalanan interaktif Anda untuk menguasai pemrograman Python dimulai di sini.
-          Belajar, berlatih, dan buat proyek yang menakjubkan dengan cara yang menyenangkan.
-        </ThemedText>
-      </ThemedView>
+  const { colors } = useTheme();
+  const router = useRouter();
 
-      <ThemedView style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Yang Kami Tawarkan</ThemedText>
-        <ThemedView style={styles.featuresList}>
-          {features.map((feature, index) => (
-            <Link key={feature.id} href={feature.route} asChild>
-              <AnimatedTouchableOpacity
-                entering={FadeInDown.delay(index * 200)}
-                style={styles.featureCard}
-              >
-                <ThemedView style={[styles.iconContainer, { backgroundColor: `${feature.color}20` }]}>
-                  <IconSymbol name={feature.icon} size={32} color={feature.color} />
-                </ThemedView>
-                <ThemedView style={styles.featureContent}>
-                  <ThemedText style={styles.featureTitle}>{feature.title}</ThemedText>
-                  <ThemedText style={styles.featureDescription}>{feature.description}</ThemedText>
-                </ThemedView>
-                <IconSymbol name="chevron.right" size={20} color="#666" />
-              </AnimatedTouchableOpacity>
-            </Link>
-          ))}
-        </ThemedView>
-      </ThemedView>
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.welcomeSection, { backgroundColor: colors.card }]}>
+        <IconSymbol name="hand.wave" size={100} color={colors.text} style={styles.waveIcon} />
+        <Text style={[styles.welcomeText, { color: colors.text }]}>
+          Selamat Datang di VPL
+        </Text>
+        <Text style={[styles.welcomeDescription, { color: colors.text }]}>
+          Perjalanan interaktif Anda untuk menguasai pemrograman Python dimulai di sini. Belajar, berlatih, dan buat proyek yang menakjubkan dengan cara yang menyenangkan.
+        </Text>
+      </View>
+
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Yang Kami Tawarkan</Text>
+
+      <View style={styles.featuresContainer}>
+        {features.map((feature) => (
+          <TouchableOpacity 
+            key={feature.id}
+            style={[styles.featureCard, { backgroundColor: colors.card }]}
+            onPress={() => router.push(feature.route)}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: `${feature.color}10` }]}>
+              <IconSymbol name={feature.icon} size={32} color={feature.color} />
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={[styles.featureTitle, { color: colors.text }]}>
+                {feature.title}
+              </Text>
+              <Text style={[styles.featureDescription, { color: colors.text }]}>
+                {feature.description}
+              </Text>
+            </View>
+            <IconSymbol 
+              name="chevron.right" 
+              size={24} 
+              color={colors.primary}
+              style={styles.arrowIcon} 
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
     </ScrollView>
   );
 }
@@ -115,12 +121,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 15,
     lineHeight: 32,
-  },
-  welcomeText: {
-    fontSize: 16,
-    lineHeight: 24,
-    opacity: 0.8,
-    paddingHorizontal: 5,
   },
   section: {
     flex: 1,
@@ -163,5 +163,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     lineHeight: 20,
+  },
+  waveIcon: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+  },
+  welcomeSection: {
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 40,
+  },
+  welcomeText: {
+    fontSize: 16,
+    lineHeight: 24,
+    opacity: 0.8,
+    paddingHorizontal: 5,
+  },
+  welcomeDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.8,
+    paddingHorizontal: 5,
+  },
+  featuresContainer: {
+    gap: 15,
+  },
+  arrowIcon: {
+    marginLeft: 10,
   },
 });

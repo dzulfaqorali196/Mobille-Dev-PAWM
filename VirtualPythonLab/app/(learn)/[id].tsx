@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { Course, CourseSection, CourseProgress, SectionProgress } from '../../types/course';
 import { COURSES } from '../../constants/courses';
 import Markdown from 'react-native-markdown-display';
+import { useTheme } from '../../lib/ThemeContext';
 
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -19,6 +20,7 @@ export default function CourseDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedSection, setSelectedSection] = useState<CourseSection | null>(null);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     loadCourse();
@@ -120,7 +122,7 @@ export default function CourseDetailScreen() {
         // Update progress percentage
         const completedSections = allProgress?.length || 0;
         const totalSections = course.sections.length;
-        const newProgress = Math.round((completedSections / totalSections) * 100);
+        const newProgress = Math.min(Math.round((completedSections / totalSections) * 100), 100);
 
         // Update course progress
         const { data: updatedProgress, error: courseProgressError } = await supabase
@@ -190,7 +192,7 @@ export default function CourseDetailScreen() {
       // Update progress percentage
       const completedSections = allProgress?.length || 0;
       const totalSections = course.sections.length;
-      const newProgress = Math.round((completedSections / totalSections) * 100);
+      const newProgress = Math.min(Math.round((completedSections / totalSections) * 100), 100);
 
       // Update course progress
       const { data: updatedProgress, error: courseProgressError } = await supabase
@@ -283,7 +285,7 @@ export default function CourseDetailScreen() {
       // Update progress percentage
       const completedSections = allProgress?.length || 0;
       const totalSections = course.sections.length;
-      const newProgress = Math.round((completedSections / totalSections) * 100);
+      const newProgress = Math.min(Math.round((completedSections / totalSections) * 100), 100);
 
       // Update course progress
       await supabase
@@ -316,13 +318,13 @@ export default function CourseDetailScreen() {
     if (!selectedSection) return null;
 
     return (
-      <ThemedView style={styles.sectionContent}>
+      <ThemedView style={[styles.sectionContent, { backgroundColor: isDark ? '#1b2838' : colors.background }]}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? '#2a475e' : colors.card }]}
           onPress={() => setSelectedSection(null)}
         >
-          <IconSymbol name="chevron.left" size={24} color="#66c0f4" />
-          <ThemedText style={styles.backText}>Kembali ke Daftar Materi</ThemedText>
+          <IconSymbol name="chevron.left" size={24} color={colors.primary} />
+          <Text style={[styles.backText, { color: colors.primary }]}>Kembali ke Daftar Materi</Text>
         </TouchableOpacity>
         <ScrollView 
           style={styles.markdownContainer}
@@ -333,17 +335,41 @@ export default function CourseDetailScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          <ThemedView style={styles.contentHeader}>
-            <ThemedText style={styles.contentTitle}>{selectedSection.title}</ThemedText>
-          </ThemedView>
-          <ThemedView style={styles.contentBody}>
+          <View style={[styles.contentHeader, { backgroundColor: isDark ? '#2a475e' : colors.card }]}>
+            <View style={styles.contentType}>
+              <IconSymbol 
+                name="doc.text.fill" 
+                size={16} 
+                color={colors.primary} 
+              />
+              <Text style={[styles.contentTypeText, { color: colors.primary }]}>
+                {selectedSection.type === 'quiz' ? 'Kuis' : 'Materi'}
+              </Text>
+            </View>
+            <Text style={[styles.contentTitle, { color: isDark ? '#c7d5e0' : colors.text }]}>
+              {selectedSection.title}
+            </Text>
+          </View>
+          <View style={[styles.contentBody, { backgroundColor: isDark ? '#2a475e' : colors.card }]}>
             <Markdown 
-              style={markdownStyles}
-              mergeStyle={true}
+              style={{
+                body: { color: isDark ? '#c7d5e0' : colors.text },
+                heading1: { color: isDark ? '#c7d5e0' : colors.text },
+                heading2: { color: isDark ? '#c7d5e0' : colors.text },
+                heading3: { color: isDark ? '#c7d5e0' : colors.text },
+                paragraph: { color: isDark ? '#8f98a0' : colors.text, opacity: 0.9 },
+                blockquote: { backgroundColor: isDark ? '#1b2838' : colors.border + '1A', borderColor: isDark ? '#2a475e' : colors.border },
+                code_inline: { color: isDark ? '#c7d5e0' : colors.text, backgroundColor: isDark ? '#1b2838' : colors.border + '1A' },
+                code_block: { backgroundColor: isDark ? '#1b2838' : colors.border + '1A' },
+                fence: { backgroundColor: isDark ? '#1b2838' : colors.border + '1A' },
+                list_item: { color: isDark ? '#8f98a0' : colors.text },
+                bullet_list: { color: isDark ? '#8f98a0' : colors.text },
+                ordered_list: { color: isDark ? '#8f98a0' : colors.text },
+              }}
             >
               {selectedSection.content}
             </Markdown>
-          </ThemedView>
+          </View>
         </ScrollView>
       </ThemedView>
     );
@@ -380,96 +406,89 @@ export default function CourseDetailScreen() {
       {selectedSection ? (
         renderSectionContent()
       ) : (
-        <ScrollView style={styles.container}>
-          <ThemedView style={styles.header}>
-            <ThemedText style={styles.title}>{course.title}</ThemedText>
-            <ThemedText style={styles.description}>{course.description}</ThemedText>
-            <ThemedView style={styles.metadata}>
-              <ThemedView style={styles.metadataItem}>
-                <IconSymbol name="clock.fill" size={16} color="#66c0f4" />
-                <ThemedText style={styles.metadataText}>
-                  {course.estimated_time}
-                </ThemedText>
-              </ThemedView>
-              <ThemedView
-                style={[
-                  styles.levelBadge,
-                  {
-                    backgroundColor:
-                      course.level === 'beginner'
-                        ? '#4CAF50'
-                        : course.level === 'intermediate'
-                        ? '#FFC107'
-                        : '#F44336',
-                  },
-                ]}
-              >
-                <ThemedText style={styles.levelText}>
+        <ScrollView style={[styles.container, { backgroundColor: isDark ? '#1b2838' : colors.background }]}>
+          <View style={[styles.header, { 
+            backgroundColor: isDark ? '#2a475e' : colors.card,
+            borderBottomColor: isDark ? '#1b2838' : colors.border
+          }]}>
+            <Text style={[styles.title, { color: isDark ? '#c7d5e0' : colors.text }]}>
+              {course.title}
+            </Text>
+            <Text style={[styles.description, { color: isDark ? '#8f98a0' : colors.text }]}>
+              {course.description}
+            </Text>
+            <View style={styles.metadata}>
+              <View style={styles.metadataItem}>
+                <IconSymbol name="clock" size={16} color={isDark ? '#8f98a0' : colors.text} />
+                <Text style={[styles.metadataText, { color: isDark ? '#8f98a0' : colors.text }]}>
+                  {course.duration}
+                </Text>
+              </View>
+              <View style={[
+                styles.levelBadge,
+                {
+                  backgroundColor:
+                    course.level === 'beginner'
+                      ? '#4CAF50'
+                      : course.level === 'intermediate'
+                      ? '#FFC107'
+                      : '#F44336',
+                },
+              ]}>
+                <Text style={styles.levelText}>
                   {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
-                </ThemedText>
-              </ThemedView>
-            </ThemedView>
-          </ThemedView>
+                </Text>
+              </View>
+            </View>
+          </View>
 
-          <ThemedView style={styles.sections}>
-            <ThemedText style={styles.sectionTitle}>Daftar Materi</ThemedText>
+          <View style={[styles.sections, { backgroundColor: isDark ? '#1b2838' : colors.background }]}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#c7d5e0' : colors.text }]}>
+              Daftar Materi
+            </Text>
             {course.sections.map((section, index) => (
               <TouchableOpacity
                 key={section.id}
                 style={[
                   styles.sectionItem,
-                  { borderLeftColor: 
-                    section.type === 'quiz' ? '#FFC107' :
-                    '#66c0f4'
+                  { 
+                    backgroundColor: isDark ? '#2a475e' : colors.card,
+                    borderLeftColor: section.type === 'quiz' ? '#FFC107' : colors.primary
                   }
                 ]}
                 onPress={() => handleSectionPress(section)}
               >
-                <ThemedView style={styles.sectionHeader}>
-                  <ThemedView style={styles.sectionInfo}>
-                    <ThemedView style={[
-                      styles.sectionIcon,
-                      {
-                        backgroundColor: 
-                          section.type === 'quiz' ? 'rgba(255, 193, 7, 0.1)' :
-                          'rgba(102, 192, 244, 0.1)',
-                      }
-                    ]}>
-                      {section.type === 'quiz' ? (
-                        <IconSymbol name="questionmark.circle.fill" size={24} color="#FFC107" />
-                      ) : (
-                        <IconSymbol name="doc.text" size={24} color="#66c0f4" />
-                      )}
-                    </ThemedView>
-                    <ThemedView>
-                      <ThemedText style={styles.sectionName}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionInfo}>
+                    <View style={[styles.sectionIcon, { backgroundColor: isDark ? '#1b2838' : colors.border + '1A' }]}>
+                      <IconSymbol 
+                        name={section.type === 'quiz' ? 'questionmark.circle.fill' : 'doc.text'} 
+                        size={24} 
+                        color={section.type === 'quiz' ? '#FFC107' : colors.primary} 
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sectionName, { color: isDark ? '#c7d5e0' : colors.text }]}>
                         {section.title}
-                      </ThemedText>
-                      <ThemedText style={[
-                        styles.sectionType,
-                        {
-                          color: 
-                            section.type === 'quiz' ? '#FFC107' :
-                            '#66c0f4'
-                        }
-                      ]}>
+                      </Text>
+                      <Text style={[styles.sectionType, { color: isDark ? '#8f98a0' : colors.text }]}>
                         {section.type === 'quiz' ? 'Kuis' : 'Materi'}
-                      </ThemedText>
-                    </ThemedView>
-                  </ThemedView>
+                      </Text>
+                    </View>
+                  </View>
                   {sectionProgress[section.id] ? (
                     <IconSymbol name="checkmark.circle.fill" size={24} color="#4CAF50" />
                   ) : (
                     <IconSymbol 
                       name="chevron.right" 
                       size={24} 
-                      color={section.type === 'quiz' ? '#FFC107' : '#66c0f4'} 
+                      color={section.type === 'quiz' ? '#FFC107' : colors.primary} 
                     />
                   )}
-                </ThemedView>
+                </View>
               </TouchableOpacity>
             ))}
-          </ThemedView>
+          </View>
         </ScrollView>
       )}
     </>
@@ -555,7 +574,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(102, 192, 244, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
