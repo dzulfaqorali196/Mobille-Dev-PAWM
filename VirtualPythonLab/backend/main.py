@@ -4,10 +4,15 @@ import asyncio
 import sys
 import io
 import os
+import logging
 from contextlib import redirect_stdout
 import traceback
 from typing import Optional
 from dotenv import load_dotenv
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -19,8 +24,8 @@ app = FastAPI(
 )
 
 # Get configuration from environment variables
-CORS_ORIGINS = eval(os.getenv("CORS_ORIGINS", "[]"))
-ALLOWED_HOSTS = eval(os.getenv("ALLOWED_HOSTS", "[]"))
+CORS_ORIGINS = eval(os.getenv("CORS_ORIGINS", "['*']"))
+ALLOWED_HOSTS = eval(os.getenv("ALLOWED_HOSTS", "['*']"))
 COMPILER_TIMEOUT = int(os.getenv("COMPILER_TIMEOUT", "30"))
 
 # Konfigurasi CORS
@@ -28,7 +33,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS", "WEBSOCKET"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -38,23 +43,18 @@ class CodeExecutor:
         self.locals = {}
     
     async def execute(self, code: str) -> tuple[str, str]:
-        # Redirect stdout untuk menangkap output
         stdout = io.StringIO()
         stderr = io.StringIO()
         
         try:
-            # Set timeout untuk eksekusi kode
             with redirect_stdout(stdout):
                 try:
-                    # Jalankan kode dengan timeout
                     async with asyncio.timeout(COMPILER_TIMEOUT):
-                        # Compile dan eksekusi kode
                         exec(code, self.globals, self.locals)
                 except asyncio.TimeoutError:
                     return "", f"Error: Code execution timed out after {COMPILER_TIMEOUT} seconds"
             return stdout.getvalue(), ""
         except Exception as e:
-            # Tangkap error dan format traceback
             traceback.print_exc(file=stderr)
             return stdout.getvalue(), stderr.getvalue()
         finally:
@@ -63,33 +63,37 @@ class CodeExecutor:
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    executor = CodeExecutor()
+    client = f"{websocket.client.host}:{websocket.client.port}"
+    logger.info(f"New WebSocket connection from {client}")
     
     try:
+        await websocket.accept()
+        logger.info(f"WebSocket connection accepted for {client}")
+        executor = CodeExecutor()
+        
         while True:
-            # Terima kode dari client
-            code = await websocket.receive_text()
-            
-            if not code:
-                continue
+            try:
+                code = await websocket.receive_text()
+                logger.info(f"Received code from {client}: {code[:50]}...")
                 
-            # Eksekusi kode
-            output, error = await executor.execute(code)
-            
-            # Kirim hasil ke client
-            await websocket.send_json({
-                "output": output,
-                "error": error
-            })
+                output, error = await executor.execute(code)
+                logger.info(f"Code execution completed for {client}")
+                
+                await websocket.send_json({
+                    "output": output,
+                    "error": error
+                })
+            except Exception as e:
+                logger.error(f"Error during code execution for {client}: {str(e)}")
+                if not websocket.client_state.DISCONNECTED:
+                    await websocket.send_json({
+                        "output": "",
+                        "error": f"Server error: {str(e)}"
+                    })
     except Exception as e:
-        print(f"WebSocket error: {str(e)}")
-        if not websocket.client_state.DISCONNECTED:
-            await websocket.send_json({
-                "output": "",
-                "error": f"Server error: {str(e)}"
-            })
+        logger.error(f"WebSocket error for {client}: {str(e)}")
     finally:
+        logger.info(f"WebSocket connection closed for {client}")
         if not websocket.client_state.DISCONNECTED:
             await websocket.close()
 
@@ -97,12 +101,15 @@ async def websocket_endpoint(websocket: WebSocket):
 async def health_check():
     return {
         "status": "healthy",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "cors_origins": CORS_ORIGINS,
+        "allowed_hosts": ALLOWED_HOSTS
     }
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "8000"))
+    logger.info(f"Starting server on port {port}")
     uvicorn.run(
         app,
         host="0.0.0.0",
