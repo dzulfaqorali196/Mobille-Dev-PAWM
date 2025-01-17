@@ -5,8 +5,10 @@ import { ThemedText } from '../../components/ThemedText';
 import { IconSymbol, IconSymbolName } from '../../components/ui/IconSymbol';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useTheme } from '../../lib/ThemeContext';
+import Constants from 'expo-constants';
 
 const { width } = Dimensions.get('window');
+const WEBSOCKET_URL = Constants.expoConfig?.extra?.websocketUrl || 'wss://mobille-dev-pawm-production.up.railway.app/ws';
 
 const DEFAULT_CODE = `# Tulis kode Python Anda di sini
 print("Hello, World!")
@@ -70,6 +72,7 @@ export default function CodeScreen() {
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -85,41 +88,50 @@ export default function CodeScreen() {
   }, []);
 
   const connectWebSocket = () => {
-    ws.current = new WebSocket('ws://10.43.123.58:8000/ws');
-    
-    ws.current.onopen = () => {
-      console.log('WebSocket Connected');
-      setOutput('Terhubung ke server Python');
-    };
-    
-    ws.current.onmessage = (event) => {
-      const response = JSON.parse(event.data);
-      let finalOutput = '';
+    try {
+      ws.current = new WebSocket(WEBSOCKET_URL);
       
-      if (response.output) {
-        finalOutput += response.output;
-      }
+      ws.current.onopen = () => {
+        console.log('WebSocket Connected to:', WEBSOCKET_URL);
+        setOutput('Terhubung ke server Python');
+        setIsConnected(true);
+      };
       
-      if (response.error) {
-        finalOutput += '\n\nError:\n' + response.error;
-      }
+      ws.current.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+        let finalOutput = '';
+        
+        if (response.output) {
+          finalOutput += response.output;
+        }
+        
+        if (response.error) {
+          finalOutput += '\n\nError:\n' + response.error;
+        }
+        
+        setOutput(finalOutput.trim());
+        setIsRunning(false);
+      };
       
-      setOutput(finalOutput.trim());
-      setIsRunning(false);
-    };
-    
-    ws.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setOutput('Error: Tidak dapat terhubung ke server Python (10.43.123.58:8000)');
-      setIsRunning(false);
-    };
-    
-    ws.current.onclose = () => {
-      console.log('WebSocket Disconnected');
-      setOutput('Terputus dari server Python. Mencoba menghubungkan kembali...');
-      // Mencoba menghubungkan kembali setelah 3 detik
-      setTimeout(connectWebSocket, 3000);
-    };
+      ws.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setOutput('Error: Tidak dapat terhubung ke server Python. Server mungkin sedang offline.');
+        setIsConnected(false);
+        setIsRunning(false);
+      };
+      
+      ws.current.onclose = () => {
+        console.log('WebSocket Disconnected');
+        setOutput('Terputus dari server Python. Mencoba menghubungkan kembali...');
+        setIsConnected(false);
+        // Mencoba menghubungkan kembali setelah 3 detik
+        setTimeout(connectWebSocket, 3000);
+      };
+    } catch (error) {
+      console.error('WebSocket connection error:', error);
+      setOutput('Error: Tidak dapat membuat koneksi ke server Python.');
+      setIsConnected(false);
+    }
   };
 
   const handleRunCode = async () => {

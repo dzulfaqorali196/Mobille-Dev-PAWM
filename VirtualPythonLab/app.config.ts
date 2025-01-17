@@ -2,9 +2,9 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'Virtual Python Lab',
-    slug: 'virtual-python-lab',
-    version: '1.0.0',
+    name: 'VirtualPythonLab',
+    slug: 'virtualpythonlab',
+    version: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -18,27 +18,32 @@ export default {
     ],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.yourcompany.virtualpythonlab'
+      bundleIdentifier: 'com.dzulfaqor.virtualpythonlab'
     },
     android: {
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff'
       },
-      package: 'com.yourcompany.virtualpythonlab'
+      package: 'com.dzulfaqor.virtualpythonlab'
     },
     web: {
       favicon: './assets/favicon.png'
     },
-    extra: {
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
-      eas: {
-        projectId: 'your-project-id'
-      }
-    },
     plugins: [
-      'expo-router'
-    ]
+      'expo-router',
+      'expo-splash-screen',
+      'expo-font',
+      'expo-secure-store'
+    ],
+    extra: {
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL,
+      websocketUrl: process.env.EXPO_PUBLIC_WEBSOCKET_URL,
+      eas: {
+        projectId: '35131205-0798-4bc7-ba9a-906949edc5f7'
+      }
+    }
   }
 }; 
