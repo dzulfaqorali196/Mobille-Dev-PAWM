@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000
+# Railway akan menyediakan PORT sebagai environment variable
+ENV PORT=8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Gunakan variable PORT dari environment
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT} 
