@@ -48,9 +48,10 @@ Virtual Python Lab adalah aplikasi pembelajaran Python interaktif yang dirancang
 - ✨ Materi pembelajaran terstruktur dan mudah dipahami
 - 📝 Kuis interaktif untuk menguji pemahaman
 - 💻 Simulator kode Python langsung di aplikasi
+- 📝 Template kode untuk pembelajaran
 - 🌙 Mode gelap/terang untuk kenyamanan pengguna
-- 📊 Sistem tracking progress pembelajaran
-- 🔄 Sinkronisasi data pembelajaran
+- 🔄 Sinkronisasi data dengan Supabase
+- 🌐 Tersedia versi web dan mobile
 
 ## 🛠️ Teknologi yang Digunakan
 
@@ -61,11 +62,11 @@ Virtual Python Lab adalah aplikasi pembelajaran Python interaktif yang dirancang
 - Markdown Renderer
 - Judge0 API (Code Execution)
 - Expo Secure Store
+- React Navigation
 
 ## 📦 Cara Instalasi
 
-1. Clone repositori ini:
-\`\`\`bash
+1. Clone repositori ini:\`\`\`bash
 git clone https://github.com/yourusername/VirtualPythonLab.git
 \`\`\`
 
@@ -129,50 +130,10 @@ npx expo start
    - Dictionary
    - Set
 
-## 📦 Build dan Deployment
-
-### 🚀 Deploy Backend
-
-1. **Deploy ke Railway.app** (Rekomendasi karena gratis dan mudah):
-   \`\`\`bash
-   # Install Railway CLI
-   npm i -g @railway/cli
-
-   # Login ke Railway
-   railway login
-
-   # Inisialisasi proyek
-   cd backend
-   railway init
-
-   # Deploy
-   railway up
-   \`\`\`
-
-2. **Atau Deploy ke Heroku**:
-   \`\`\`bash
-   # Install Heroku CLI
-   npm install -g heroku
-
-   # Login ke Heroku
-   heroku login
-
-   # Buat aplikasi baru
-   heroku create virtual-python-lab-backend
-
-   # Deploy
-   git subtree push --prefix backend heroku main
-   \`\`\`
-
-3. **Setup Environment Variables**:
-   - `WEBSOCKET_URL`: URL websocket server
-   - `PYTHON_PATH`: Path ke Python interpreter
-   - `COMPILER_TIMEOUT`: Timeout untuk kompilasi (dalam detik)
-
-### 📱 Build APK
+## 📱 Build APK
 
 1. **Persiapan Build**:
-   \`\`\`bash
+   ```bash
    # Install EAS CLI
    npm install -g eas-cli
 
@@ -181,10 +142,10 @@ npx expo start
 
    # Konfigurasi build
    eas build:configure
-   \`\`\`
+   ```
 
 2. **Update app.json**:
-   \`\`\`json
+   ```json
    {
      "expo": {
        "android": {
@@ -193,22 +154,24 @@ npx expo start
        }
      }
    }
-   \`\`\`
+   ```
 
-3. **Update .env untuk Production**:
-   \`\`\`
-   BACKEND_URL=https://your-backend-url.railway.app
-   WEBSOCKET_URL=wss://your-backend-url.railway.app/ws
-   \`\`\`
+3. **Pastikan Environment Variables**:
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   EXPO_PUBLIC_JUDGE0_API=https://judge0-ce.p.rapidapi.com
+   EXPO_PUBLIC_JUDGE0_KEY=your_judge0_api_key
+   ```
 
 4. **Build APK**:
-   \`\`\`bash
+   ```bash
    # Build APK untuk development
    eas build -p android --profile preview
 
    # Build APK untuk production
    eas build -p android --profile production
-   \`\`\`
+   ```
 
 5. **Download dan Distribusi**:
    - APK akan tersedia di Expo Dashboard
@@ -216,27 +179,20 @@ npx expo start
 
 ### ⚠️ Catatan Penting
 
-1. **Backend Requirements**:
-   - Python 3.8+
-   - FastAPI
-   - Websockets
-   - uvicorn
-
-2. **Code Execution**:
+1. **Code Execution**:
    - Menggunakan Judge0 API
-   - Support berbagai bahasa pemrograman
+   - Support bahasa Python
    - Batasan eksekusi kode yang aman
 
-3. **Security**:
-   - Gunakan HTTPS untuk production
-   - Batasi akses CORS
-   - Implementasi rate limiting
-   - Gunakan environment variables
+2. **Security**:
+   - Autentikasi dengan Supabase
+   - Gunakan environment variables yang aman
+   - Pastikan konfigurasi keamanan Expo
 
-4. **Monitoring**:
-   - Setup logging
-   - Gunakan error tracking
-   - Monitor penggunaan resources
+3. **Monitoring**:
+   - Pantau penggunaan Judge0 API
+   - Monitor autentikasi Supabase
+   - Perhatikan batasan layanan gratis
 
 ## 🤝 Kontribusi
 
@@ -256,4 +212,4 @@ Untuk pertanyaan dan saran, silakan hubungi tim pengembang:
 
 ## 🙏 Ucapan Terima Kasih
 
-Terima kasih kepada semua yang telah berkontribusi dalam pengembangan Virtual Python Lab, termasuk dosen pembimbing dan teman-teman yang telah memberikan masukan berharga. 
+Terima kasih kepada semua yang telah berkontribusi dalam pengembangan Virtual Python Lab, termasuk dosen pembimbing dan teman-teman yang telah memberikan masukan berharga.
