@@ -14,6 +14,18 @@
 
 <br />
 
+<div align="center">
+
+[![Download APK](https://img.shields.io/badge/Download-APK-green?style=for-the-badge&logo=android)](https://expo.dev/artifacts/eas/8y1KeKL3kG3QoiLFtEaujL.apk)
+[![Web Version](https://img.shields.io/badge/Web-Virtual%20Python%20Lab-blue?style=for-the-badge&logo=react)](https://virtual-python-lab.vercel.app)
+
+</div>
+
+## 📱 Download
+
+- Android: [Download APK](https://expo.dev/artifacts/eas/8y1KeKL3kG3QoiLFtEaujL.apk)
+- Web: [virtual-python-lab.vercel.app](https://virtual-python-lab.vercel.app)
+
 ## 🌐 Versi Web
 
 [![Virtual Python Lab](https://img.shields.io/badge/Web-Virtual%20Python%20Lab-blue?style=for-the-badge&logo=react)](https://virtual-python-lab.vercel.app)
