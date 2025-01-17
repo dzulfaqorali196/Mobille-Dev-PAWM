@@ -33,11 +33,7 @@
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "22b03b49-dbcd-4246-9b01-7438f5bbdd14"
       }
-    },
-    "owner": "dzuldev"
+    }
   }
 }
