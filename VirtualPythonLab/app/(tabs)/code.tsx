@@ -8,7 +8,8 @@ import { useTheme } from '../../lib/ThemeContext';
 import Constants from 'expo-constants';
 
 const { width } = Dimensions.get('window');
-const WEBSOCKET_URL = Constants.expoConfig?.extra?.websocketUrl || 'wss://mobille-dev-pawm-production.up.railway.app/ws';
+const JUDGE0_API = Constants.expoConfig?.extra?.judge0Api || 'https://judge0-ce.p.rapidapi.com';
+const JUDGE0_KEY = Constants.expoConfig?.extra?.judge0Key;
 
 const DEFAULT_CODE = `# Tulis kode Python Anda di sini
 print("Hello, World!")
@@ -72,82 +73,82 @@ export default function CodeScreen() {
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const ws = useRef<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
-    // Inisialisasi WebSocket saat komponen dimount
-    connectWebSocket();
-    
-    return () => {
-      // Cleanup WebSocket saat komponen unmount
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
+    // Set pesan awal
+    setOutput('Siap menjalankan kode Python');
   }, []);
 
-  const connectWebSocket = () => {
-    try {
-      ws.current = new WebSocket(WEBSOCKET_URL);
-      
-      ws.current.onopen = () => {
-        console.log('WebSocket Connected to:', WEBSOCKET_URL);
-        setOutput('Terhubung ke server Python');
-        setIsConnected(true);
-      };
-      
-      ws.current.onmessage = (event) => {
-        const response = JSON.parse(event.data);
-        let finalOutput = '';
-        
-        if (response.output) {
-          finalOutput += response.output;
-        }
-        
-        if (response.error) {
-          finalOutput += '\n\nError:\n' + response.error;
-        }
-        
-        setOutput(finalOutput.trim());
-        setIsRunning(false);
-      };
-      
-      ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setOutput('Error: Tidak dapat terhubung ke server Python. Server mungkin sedang offline.');
-        setIsConnected(false);
-        setIsRunning(false);
-      };
-      
-      ws.current.onclose = () => {
-        console.log('WebSocket Disconnected');
-        setOutput('Terputus dari server Python. Mencoba menghubungkan kembali...');
-        setIsConnected(false);
-        // Mencoba menghubungkan kembali setelah 3 detik
-        setTimeout(connectWebSocket, 3000);
-      };
-    } catch (error) {
-      console.error('WebSocket connection error:', error);
-      setOutput('Error: Tidak dapat membuat koneksi ke server Python.');
-      setIsConnected(false);
-    }
-  };
-
   const handleRunCode = async () => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      setOutput('Error: Tidak dapat terhubung ke server Python. Mencoba menghubungkan kembali...');
-      connectWebSocket();
-      return;
-    }
-
-    setIsRunning(true);
-    setOutput('Menjalankan kode...');
-    
     try {
-      ws.current.send(code);
-    } catch (error: any) {
-      setOutput('Error: ' + error.message);
+      setIsRunning(true);
+      setOutput('Menjalankan kode...');
+
+      // Submit code ke Judge0
+      const submitResponse = await fetch(`${JUDGE0_API}/submissions`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'Content-Type': 'application/json',
+          'X-RapidAPI-Key': JUDGE0_KEY,
+          'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
+        },
+        body: JSON.stringify({
+          source_code: code,
+          language_id: 71, // Python
+          stdin: ''
+        })
+      });
+
+      const submitData = await submitResponse.json();
+      const token = submitData.token;
+
+      // Poll untuk hasil
+      let attempts = 0;
+      const maxAttempts = 10;
+      while (attempts < maxAttempts) {
+        const resultResponse = await fetch(`${JUDGE0_API}/submissions/${token}`, {
+          method: 'GET',
+          headers: {
+            'X-RapidAPI-Key': JUDGE0_KEY,
+            'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
+          }
+        });
+
+        const resultData = await resultResponse.json();
+        
+        if (resultData.status?.id >= 3) { // Selesai diproses
+          let finalOutput = '';
+          
+          if (resultData.stdout) {
+            finalOutput += resultData.stdout;
+          }
+          
+          if (resultData.stderr) {
+            finalOutput += '\n\nError:\n' + resultData.stderr;
+          }
+          
+          if (resultData.compile_output) {
+            finalOutput += '\n\nCompile Output:\n' + resultData.compile_output;
+          }
+          
+          setOutput(finalOutput.trim() || 'Tidak ada output');
+          break;
+        }
+
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      if (attempts >= maxAttempts) {
+        setOutput('Error: Timeout - Kode terlalu lama diproses');
+      }
+    } catch (error) {
+      console.error('Error running code:', error);
+      setOutput('Error: ' + (error as Error).message);
+      setIsConnected(false);
+    } finally {
       setIsRunning(false);
     }
   };

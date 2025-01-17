@@ -39,8 +39,8 @@ export default {
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL,
-      websocketUrl: process.env.EXPO_PUBLIC_WEBSOCKET_URL,
+      judge0Api: process.env.EXPO_PUBLIC_JUDGE0_API,
+      judge0Key: process.env.EXPO_PUBLIC_JUDGE0_KEY,
       eas: {
         projectId: '35131205-0798-4bc7-ba9a-906949edc5f7'
       }

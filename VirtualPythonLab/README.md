@@ -14,6 +14,12 @@
 
 <br />
 
+## 🌐 Versi Web
+
+[![Virtual Python Lab](https://img.shields.io/badge/Web-Virtual%20Python%20Lab-blue?style=for-the-badge&logo=react)](https://virtual-python-lab.vercel.app)
+
+Kunjungi versi web aplikasi di: [virtual-python-lab.vercel.app](https://virtual-python-lab.vercel.app)
+
 ## 👨‍💻 Pengembang
 
 | Nama | NIM |
@@ -41,8 +47,8 @@ Virtual Python Lab adalah aplikasi pembelajaran Python interaktif yang dirancang
 - Supabase (Backend & Database)
 - React Navigation
 - Markdown Renderer
-- Python Code Executor
-- FastAPI WebSocket Server
+- Judge0 API (Code Execution)
+- Expo Secure Store
 
 ## 📦 Cara Instalasi
 
@@ -204,13 +210,18 @@ npx expo start
    - Websockets
    - uvicorn
 
-2. **Security**:
+2. **Code Execution**:
+   - Menggunakan Judge0 API
+   - Support berbagai bahasa pemrograman
+   - Batasan eksekusi kode yang aman
+
+3. **Security**:
    - Gunakan HTTPS untuk production
    - Batasi akses CORS
    - Implementasi rate limiting
    - Gunakan environment variables
 
-3. **Monitoring**:
+4. **Monitoring**:
    - Setup logging
    - Gunakan error tracking
    - Monitor penggunaan resources
