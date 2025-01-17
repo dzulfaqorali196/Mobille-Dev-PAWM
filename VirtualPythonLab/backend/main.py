@@ -5,13 +5,17 @@ import sys
 import io
 import os
 import logging
+import gc
 from contextlib import redirect_stdout
 import traceback
 from typing import Optional
 from dotenv import load_dotenv
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
@@ -53,6 +57,9 @@ class CodeExecutor:
                         exec(code, self.globals, self.locals)
                 except asyncio.TimeoutError:
                     return "", f"Error: Code execution timed out after {COMPILER_TIMEOUT} seconds"
+                except MemoryError:
+                    gc.collect()  # Force garbage collection
+                    return "", "Error: Memory limit exceeded"
             return stdout.getvalue(), ""
         except Exception as e:
             traceback.print_exc(file=stderr)
@@ -60,6 +67,8 @@ class CodeExecutor:
         finally:
             stdout.close()
             stderr.close()
+            # Cleanup untuk mengurangi memory usage
+            gc.collect()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -74,15 +83,19 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             try:
                 code = await websocket.receive_text()
+                if not code:
+                    continue
+                    
                 logger.info(f"Received code from {client}: {code[:50]}...")
                 
                 output, error = await executor.execute(code)
                 logger.info(f"Code execution completed for {client}")
                 
-                await websocket.send_json({
-                    "output": output,
-                    "error": error
-                })
+                if not websocket.client_state.DISCONNECTED:
+                    await websocket.send_json({
+                        "output": output,
+                        "error": error
+                    })
             except Exception as e:
                 logger.error(f"Error during code execution for {client}: {str(e)}")
                 if not websocket.client_state.DISCONNECTED:
@@ -90,20 +103,24 @@ async def websocket_endpoint(websocket: WebSocket):
                         "output": "",
                         "error": f"Server error: {str(e)}"
                     })
+                break  # Keluar dari loop jika terjadi error
     except Exception as e:
         logger.error(f"WebSocket error for {client}: {str(e)}")
     finally:
         logger.info(f"WebSocket connection closed for {client}")
         if not websocket.client_state.DISCONNECTED:
             await websocket.close()
+        gc.collect()  # Force garbage collection
 
 @app.get("/health")
 async def health_check():
+    memory_usage = gc.get_count()
     return {
         "status": "healthy",
         "version": "1.0.0",
         "cors_origins": CORS_ORIGINS,
-        "allowed_hosts": ALLOWED_HOSTS
+        "allowed_hosts": ALLOWED_HOSTS,
+        "memory_usage": memory_usage
     }
 
 if __name__ == "__main__":
