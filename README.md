@@ -8,7 +8,17 @@
   <strong>Aplikasi Pembelajaran Python Interaktif untuk Pemula</strong>
 </div>
 
+<div align="center">
+  <sub>Dibuat dengan ❤️ oleh Tim Pengembang Virtual Python Lab</sub>
+</div>
+
 <br />
+
+## 🌐 Versi Web
+
+[![Virtual Python Lab](https://img.shields.io/badge/Web-Virtual%20Python%20Lab-blue?style=for-the-badge&logo=react)](https://virtual-python-lab.vercel.app)
+
+Kunjungi versi web aplikasi di: [virtual-python-lab.vercel.app](https://virtual-python-lab.vercel.app)
 
 ## 👨‍💻 Pengembang
 
@@ -37,7 +47,8 @@ Virtual Python Lab adalah aplikasi pembelajaran Python interaktif yang dirancang
 - Supabase (Backend & Database)
 - React Navigation
 - Markdown Renderer
-- Python Code Executor
+- Judge0 API (Code Execution)
+- Expo Secure Store
 
 ## 📦 Cara Instalasi
 
@@ -106,6 +117,115 @@ npx expo start
    - Dictionary
    - Set
 
+## 📦 Build dan Deployment
+
+### 🚀 Deploy Backend
+
+1. **Deploy ke Railway.app** (Rekomendasi karena gratis dan mudah):
+   \`\`\`bash
+   # Install Railway CLI
+   npm i -g @railway/cli
+
+   # Login ke Railway
+   railway login
+
+   # Inisialisasi proyek
+   cd backend
+   railway init
+
+   # Deploy
+   railway up
+   \`\`\`
+
+2. **Atau Deploy ke Heroku**:
+   \`\`\`bash
+   # Install Heroku CLI
+   npm install -g heroku
+
+   # Login ke Heroku
+   heroku login
+
+   # Buat aplikasi baru
+   heroku create virtual-python-lab-backend
+
+   # Deploy
+   git subtree push --prefix backend heroku main
+   \`\`\`
+
+3. **Setup Environment Variables**:
+   - `WEBSOCKET_URL`: URL websocket server
+   - `PYTHON_PATH`: Path ke Python interpreter
+   - `COMPILER_TIMEOUT`: Timeout untuk kompilasi (dalam detik)
+
+### 📱 Build APK
+
+1. **Persiapan Build**:
+   \`\`\`bash
+   # Install EAS CLI
+   npm install -g eas-cli
+
+   # Login ke Expo
+   eas login
+
+   # Konfigurasi build
+   eas build:configure
+   \`\`\`
+
+2. **Update app.json**:
+   \`\`\`json
+   {
+     "expo": {
+       "android": {
+         "package": "com.virtualpythonlab.app",
+         "versionCode": 1
+       }
+     }
+   }
+   \`\`\`
+
+3. **Update .env untuk Production**:
+   \`\`\`
+   BACKEND_URL=https://your-backend-url.railway.app
+   WEBSOCKET_URL=wss://your-backend-url.railway.app/ws
+   \`\`\`
+
+4. **Build APK**:
+   \`\`\`bash
+   # Build APK untuk development
+   eas build -p android --profile preview
+
+   # Build APK untuk production
+   eas build -p android --profile production
+   \`\`\`
+
+5. **Download dan Distribusi**:
+   - APK akan tersedia di Expo Dashboard
+   - Atau gunakan perintah: `eas download`
+
+### ⚠️ Catatan Penting
+
+1. **Backend Requirements**:
+   - Python 3.8+
+   - FastAPI
+   - Websockets
+   - uvicorn
+
+2. **Code Execution**:
+   - Menggunakan Judge0 API
+   - Support berbagai bahasa pemrograman
+   - Batasan eksekusi kode yang aman
+
+3. **Security**:
+   - Gunakan HTTPS untuk production
+   - Batasi akses CORS
+   - Implementasi rate limiting
+   - Gunakan environment variables
+
+4. **Monitoring**:
+   - Setup logging
+   - Gunakan error tracking
+   - Monitor penggunaan resources
+
 ## 🤝 Kontribusi
 
 Kami sangat menghargai kontribusi dari komunitas. Untuk berkontribusi:
@@ -119,7 +239,7 @@ Kami sangat menghargai kontribusi dari komunitas. Untuk berkontribusi:
 ## 📞 Kontak
 
 Untuk pertanyaan dan saran, silakan hubungi tim pengembang:
-- Email: [dzulfaqor2003@gmail.com](mailto:dzulfaqor@gmail.com)
+- Email: [dzulfaqor@gmail.com](mailto:dzulfaqor@gmail.com)
 - Email: [alvinfadhilah@gmail.com](mailto:alvinfadhilah@gmail.com)
 
 ## 🙏 Ucapan Terima Kasih
