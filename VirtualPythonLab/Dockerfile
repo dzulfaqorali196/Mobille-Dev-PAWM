@@ -1,0 +1,14 @@
+FROM node:18-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 19000
+EXPOSE 19001
+EXPOSE 19002
+
+CMD ["npm", "start"] 
