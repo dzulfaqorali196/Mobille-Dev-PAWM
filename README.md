@@ -34,10 +34,10 @@ Kunjungi versi web aplikasi di: [virtual-python-lab.vercel.app](https://virtual-
 
 ## 👨‍💻 Pengembang
 
-| Nama | NIM |
-|------|-----|
-| Dzulfaqor | 18222017 |
-| Alvin Fadhilah | 18222079 |
+| Nama | NIM | Tugas |
+|------|-----|-------|
+| Dzulfaqor | 18222017 | Full Stack Developer - Pengembangan aplikasi mobile dengan React Native/Expo, integrasi API, dan fitur-fitur utama |
+| Alvin Fadhilah | 18222079 | Technical Writer - Pembuatan dokumentasi lengkap, presentasi PPT/PDF, video demo aplikasi, dan materi pembelajaran |
 
 ## 📝 Deskripsi Proyek
 
@@ -208,7 +208,7 @@ Kami sangat menghargai kontribusi dari komunitas. Untuk berkontribusi:
 
 Untuk pertanyaan dan saran, silakan hubungi tim pengembang:
 - Email: [dzulfaqor@gmail.com](mailto:dzulfaqor@gmail.com)
-- Email: [alvinfadhilah@gmail.com](mailto:alvinfadhilah@gmail.com)
+- Email: [alvinfadhillah@gmail.com](mailto:alvinfadhillah@gmail.com)
 
 ## 🙏 Ucapan Terima Kasih
 
